@@ -1,0 +1,11 @@
+# Ignore virtual environment directories
+whatsapp_chatbot2024/Include/
+whatsapp_chatbot2024/Lib/
+whatsapp_chatbot2024/Scripts/
+
+# Ignore environment variable files
+.env
+
+# Ignore bytecode and other unnecessary files
+__pycache__/
+*.pyc

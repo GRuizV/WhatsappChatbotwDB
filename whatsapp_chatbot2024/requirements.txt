@@ -1,0 +1,10 @@
+fastapi
+pyngrok
+python-decouple
+python-multipart
+psycopg2-binary
+sqlalchemy
+starlette
+twilio
+uvicorn
+
