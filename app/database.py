@@ -15,8 +15,8 @@ DB_PWD = config('DB_PASSWORD')
 DB_NAME = config('DB_NAME')
 
 #DATABASE CREATION
-URL = f"postgresql://{DB_USER}:{DB_PWD}@localhost/{DB_NAME}"
-engine = create_engine(URL)
+DB_URL = f"postgresql://{DB_USER}:{DB_PWD}@localhost/{DB_NAME}"
+engine = create_engine(DB_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
