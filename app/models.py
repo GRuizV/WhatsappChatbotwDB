@@ -8,10 +8,10 @@ from sqlalchemy.ext.declarative import declarative_base
 import datetime
 
 
+#DATABASE DEFINITION
 Base = declarative_base()
 
-
-class Conversations(Base): 
+class Conversation(Base): 
 
     __tablename__ = 'conversations'
 
