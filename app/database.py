@@ -3,6 +3,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from decouple import config
+from typing import Generator, Optional
 
 # Internal imports
 from models import Conversation, Message
@@ -23,7 +24,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 #DB Operations Definition
 
 # Create a new conversation
-def create_conversation(db:Session, user_id=None):
+def create_conversation(db:Session, user_id: Optional[str] = None) -> int:
 
     new_conversation = Conversation(user_id=user_id)
     db.add(new_conversation)
@@ -34,7 +35,7 @@ def create_conversation(db:Session, user_id=None):
 
 
 # Add a message to a conversation
-def add_message(db:Session, conversation_id, sender, message):
+def add_message(db:Session, conversation_id: int, sender: str, message: str) -> None:
 
     new_message = Message(conversation_id=conversation_id, sender=sender, message=message)
     db.add(new_message)
@@ -42,7 +43,7 @@ def add_message(db:Session, conversation_id, sender, message):
     
 
 # Add a message to a conversation
-def end_conversation(db:Session, conversation_id):
+def end_conversation(db:Session, conversation_id: int) -> None:
 
     conversation = db.query(Conversation).filter_by(id=conversation_id).first()
     conversation.end_time = datetime.datetime.now(datetime.timezone.utc)
@@ -52,18 +53,13 @@ def end_conversation(db:Session, conversation_id):
 
 
 # Dependency to get the database session
-def get_db():
+def get_db() -> Generator[Session, None, None]:
+
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
-
-
-
-
-
-
 
 
 
