@@ -6,6 +6,7 @@ from decouple import config
 from typing import Generator, Optional
 
 # Internal imports
+import models
 from models import Conversation, Message
 import datetime
 
@@ -62,5 +63,7 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
+# Create all tables in the database
+models.Base.metadata.create_all(bind=engine)
 
 
