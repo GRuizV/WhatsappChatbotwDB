@@ -16,10 +16,10 @@ class Conversation(Base):
     __tablename__ = 'conversations'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, nullable=True)
+    user_id = Column(String, nullable=True)
     start_time = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     end_time = Column(DateTime, nullable=True)
-    messages = relationship("Message", back_populates="conversations")
+    messages = relationship("Message", back_populates="conversation")
     
 
 class Message(Base): 
@@ -31,7 +31,7 @@ class Message(Base):
     sender = Column(String, nullable=False)
     message = Column(String, nullable=False)
     timestamp = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
-    conversation = relationship("Conversations", back_populates="messages")
+    conversation = relationship("Conversation", back_populates="messages")
 
 
 
