@@ -58,7 +58,7 @@ async def reply(request: Request, db: Session = Depends(database.get_db)) -> dic
 
         # If the conversation is over, update the end_time (you can define your own logic to determine this)
         # For example, if the chat_response is a closing statement, you can end the conversation
-        if chat_response.lower() in ["bye", "goodbye", "see you"]:
+        if Body.lower() in ["bye", "goodbye", "see you"]:
             database.end_conversation(db, conversation_id)
 
         # Return the response for logging purposes
@@ -74,5 +74,44 @@ async def reply(request: Request, db: Session = Depends(database.get_db)) -> dic
 
 
 
+
+'Proposal of new Endpoint definition'
+'#####################################################################################'
+# # main.py
+
+# # Third-party imports
+# from fastapi import FastAPI, Request, Depends, HTTPException
+# from sqlalchemy.orm import Session
+# from .database import SessionLocal, engine
+
+# # Internal imports
+# import utils, database
+
+# app = FastAPI()
+
+# @app.post("/message")
+# async def reply(request: Request, db: Session = Depends(database.get_db)):
+#     try:
+#         # Parse the form data from the request
+#         form_data = await request.form()
+#         Body = form_data.get('Body')
+#         From = form_data.get('From')
+
+#         if not Body:
+#             raise HTTPException(status_code=400, detail="No message body found")
+
+#         if not From:
+#             raise HTTPException(status_code=400, detail="No sender number found")
+
+#         # Handle the incoming message and generate a response
+#         chat_response = utils.handle_message(Body, From, db)
+
+#         # Return the response for logging purposes
+#         return {"message": chat_response}
+
+#     except Exception as e:
+#         utils.logger.error(f"Error processing request: {e}")
+#         raise HTTPException(status_code=500, detail="Internal Server Error")
+'#####################################################################################'
 
 
