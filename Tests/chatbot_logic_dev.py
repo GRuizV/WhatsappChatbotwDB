@@ -4,6 +4,7 @@ from decouple import config
 
 # Internal imports
 import logging
+from random import randint, sample
 
 
 # CONSTANS
@@ -26,21 +27,21 @@ class MessageHandler:
 
     # Variables Pools
     pre_existences_pool = {
-        'General Discomfort':['Allergies', 'Diarrhea', 'Headaches'],
-        'Respiratory Difficulties':['Asthma', 'Chronic Bronchitis', 'Pneumonia'],
-        'Gastrointestinal Issues':['Gastritis', 'Celiac Disease', 'Irritable Bowel Syndrom (IBS)'],
-        'Joint/Muscular Discomfort':['Osteoarthritis', 'Gout', 'Muscle Pain (Myalgia)'],
-        'Others': ['Urticaria', 'Cystitis', 'Earache']
+        'general discomfort':['Allergies', 'Diarrhea', 'Headaches'],
+        'respiratory difficulties':['Asthma', 'Chronic Bronchitis', 'Pneumonia'],
+        'gastrointestinal issues':['Gastritis', 'Celiac Disease', 'Irritable Bowel Syndrom (IBS)'],
+        'joint/muscular discomfort':['Osteoarthritis', 'Gout', 'Muscle Pain (Myalgia)'],
+        'others': ['Urticaria', 'Cystitis', 'Earache']
     }
-    drs_names_pool = {
-        'General Discomfort': 'Primary Care Doctors',
-        'Respiratory Difficulties':'Pulmonologists',
-        'Gastrointestinal Issues':'Gastroenterologists',
-        'Joint/Muscular Discomfort':'Orthopedists',
-        'Others': 'Physicians'
+    drs_specialities_pool = {
+        'general discomfort': 'Primary Care Doctors',
+        'respiratory difficulties':'Pulmonologists',
+        'gastrointestinal issues':'Gastroenterologists',
+        'joint/muscular discomfort':'Orthopedists',
+        'others': 'Physicians'
         
         }
-    drs_specialities_pool = {
+    drs_names_and_last_names_pool = {
         'names': ['John', 'David', 'Michael', 'Jennifer', 'Susan', 'Elizabeth'],
         'last_names':['Patel', 'Miller', 'Johnson', 'Davis', 'Garcia', 'Martin']
         }
@@ -50,6 +51,7 @@ class MessageHandler:
 
 
     def __init__(self) -> None:
+        self.user_number:str = None
         self.patient_id:str = None
         self.patient_name:str = None
         self.patient_discomfort: str = None
@@ -59,36 +61,80 @@ class MessageHandler:
         self.closing_message:str = None
 
 
-    def send_message(to_number:str, body_text:str) -> None:
+    def send_message(self, body_text:str) -> None:
+
+        '''This function send a message to the user through Twilio's API'''
 
         try:
             message = client.messages.create(
                 from_=TWILIO_NUMBER,
                 body=body_text,
-                to=to_number
+                to=self.user_number
                 )
             
-            logger.info(f"Message sent to {to_number}: {message.body}")
+            logger.info(f"Message sent to {self.user_number}: {message.body}")
 
         except Exception as e:
-            logger.error(f"Error sending message to {to_number}: {e}")
+            logger.error(f"Error sending message to {self.user_number}: {e}")
     
 
 
-    def check_reply(reply:str, reply_options:list[str]) -> bool:
-        pass
+    def check_reply(self, messange:str, reply_options:list[str]) -> str:
+
+        '''
+        This function validates that the user's response are within expected.
+        '''
+
+        while True:
+
+            # Send the greeting message to the user
+            self.send_message(messange)
+        
+            # Need to figure how to capture the response from the server
+            user_response = ''' Something to take the User's response from the server '''
+            
+            # Check for early exit
+            if user_response.lower() == 'exit':
+                return self.early_exit() # Early exit the conversation
+            
+            # Check if the user's response is within expected
+            if user_response.lower() in reply_options:
+                return user_response
+
 
             
-    def early_exit() -> str:
+    def early_exit(self) -> str:
+
+        '''
+        This function Finishes the chat with the user if it's detected that the user intents to close the chat.
+
+            - This must include an early closing message sent to the customer and the DB closing.           
+        '''
+                
         pass
 
 
 
+
+
+
+
+
+
+
+
+# Conversation Flow
 
 def conversation(user_number:str):
 
+
     # Create a Handler that takes care of the chatbot ops
     chatbot_session = MessageHandler()
+
+    # Save the User Number
+    chatbot_session.user_number = user_number
+
+
 
 
     # 1. GREETING
@@ -103,7 +149,7 @@ Please reply as follows: *ID's Number*, *Patient's Full Name*
 '''
     
     #   Send the greeting message to the user
-    chatbot_session.send_message(user_number, greeting_message)
+    chatbot_session.send_message(greeting_message)
 
     #   Need to figure how to capture the response from the server
     user_response = ''' Something to take the User's response from the server '''
@@ -118,7 +164,7 @@ Please reply as follows: *ID's Number*, *Patient's Full Name*
     #   Confirm with a message using patient's name, instruct for the following step and capture the patient's discomfort 
     new_message = f'''Alright, {chatbot_session.patient_name}, thanks for reaching out. 😊​
 
-⚠️​Note: You can end this chat any time by replying with 'exit' and the query will be closed.
+⚠️​Note: You can end this chat any time by replying with 'exit' and the query will be closed. 
 
 Now, what is the reason for your query?
 
@@ -128,24 +174,8 @@ Now, what is the reason for your query?
     - Joint/Muscular Discomfort
     - Others
 '''    
-    
-    #   Setting the loop to make sure the user's response is within expected
-    user_response_validation = False
 
-    while user_response_validation == False:
-
-        #   Send the greeting message to the user
-        chatbot_session.send_message(user_number, new_message)
-    
-        #   Need to figure how to capture the response from the server
-        user_response = ''' Something to take the User's response from the server '''
-
-        #   Make sure the reply is either one of the options or 'exit'
-        user_response_validation = chatbot_session.check_reply(user_response, ['General Discomfort', 'Respiratory Difficulties', 'Gastrointestinal Issues', 'Joint/Muscular Discomfort', 'Others', 'exit'])
-
-    #   Check for early exit
-    if user_response.lower() == 'exit':
-        return chatbot_session.early_exit() # Early exit the conversation
+    user_response = chatbot_session.check_reply(new_message, ['general discomfort', 'respiratory difficulties', 'gastrointestinal issues', 'joint/muscular discomfort', 'others'])
     
     #   Save the Patient Discomfort
     chatbot_session.patient_discomfort = user_response
@@ -155,21 +185,81 @@ Now, what is the reason for your query?
 
     # 3. PATIENT'S PRE-EXISTING DIAGNOSIS
     #   Check if the patient has a pre-existing diagnosis for their discomfort 
-    new_message = f'''Do you have a previous diagnosis for your current ailment?'''    
+    new_message = f'''Do you have a previous diagnosis for your current ailment?'''        
+   
+    user_response = chatbot_session.check_reply(new_message, ['yes', 'no'])
+
+    # Generating a pre-existing ailment
+    if user_response.lower() == 'yes':
+
+        # pre_existences_pool dict Class var, in 'patient_discomfort' instance var. 
+        pre_existing_ailments = chatbot_session.pre_existences_pool[chatbot_session.patient_discomfort]
+
+        ailment_index = randint(0, len(pre_existing_ailments))  # Generate a random index to have a pre-existing ailment
+
+        # Save the random generated patient pre-existence
+        chatbot_session.patient_pre_existence = pre_existing_ailments[ailment_index]
+
+
+
+
+    # 4. PATIENT'S TREATING DOCTOR
+    #   Check if the patient want to be treated by their "current treating doctor"
+    new_message = f'''Thank you!\n Now, would you like to be attended by your current treating doctor?'''    
+
+    user_response = chatbot_session.check_reply(new_message, ['yes', 'no'])
+
+    # Generating a dr's name and last name
+    if user_response.lower() == 'yes':
+
+        # Generate dr's names and last names options. 
+        dr_names_options = chatbot_session.drs_names_and_last_names_pool['names']
+        dr_last_names_options = chatbot_session.drs_names_and_last_names_pool['last_names']
+
+        # Generate the seeds of the resulting dr's name and last name
+        dr_names_index = randint(0, len(dr_names_options))
+        dr_last_name_index = randint(0, len(dr_last_names_options))
+
+        # Set the actual dr's name and last name
+        chatbot_session.treating_dr = f'{dr_names_options[dr_names_index]} {dr_last_names_options[dr_last_name_index]}'
     
-    #   Setting the loop to make sure the user's response is within expected
-    user_response_validation = False
 
-    while user_response_validation == False:
+    else:
+        
+        # Generate a doctor's speciality based on patient discomfort
+        dr_speciality = chatbot_session.drs_specialities_pool[chatbot_session.patient_discomfort]
 
-        #   Send the greeting message to the user
-        chatbot_session.send_message(user_number, new_message)
-    
-        #   Need to figure how to capture the response from the server
-        user_response = ''' Something to take the User's response from the server '''
+        # Generate dr's names and last names options. 
+        dr_names_options = chatbot_session.drs_names_and_last_names_pool['names']
+        dr_last_names_options = chatbot_session.drs_names_and_last_names_pool['last_names']
 
-        #   Make sure the reply is either one of the options or 'exit'
-        user_response_validation = chatbot_session.check_reply(user_response, ['Yes', 'No', 'exit'])
+        # Generate seeds to randomly generate 3 different options for drs names and last names
+        name_op1, name_op2, name_op3 = sample(range(dr_names_options),3)
+        lastname_op1, lastname_op2, lastname_op3 = sample(range(dr_last_names_options),3)
+
+        # Define the actual 3 options of drs for the user to choose
+        dr_op_1 = f'{dr_names_options[name_op1]} {dr_last_names_options[lastname_op1]}'
+        dr_op_2 = f'{dr_names_options[name_op2]} {dr_last_names_options[lastname_op2]}'
+        dr_op_3 = f'{dr_names_options[name_op3]} {dr_last_names_options[lastname_op3]}'
+
+        # Generate the text body that will be sent to the user
+        new_message = f'''Ok! In that case we currently count with this {dr_speciality} to take care of you ailment:
+1. {dr_op_1}
+2. {dr_op_2}
+3. {dr_op_3}
+
+Which {dr_speciality[:-1]} would you like be attended by?
+''' # the 'dr_speciality[:-1]' is to name the singular of the dr specialities
+        
+    # Create the list of possible replies
+    users_replies = [dr_op_1.lower(), dr_op_2.lower(), dr_op_3.lower(), '1', '2', '3']
+
+    # Check the user's reply is within expected
+    user_response = chatbot_session.check_reply(new_message, users_replies)
+
+    # Save the user's choosen dr
+    chatbot_session.treating_dr = user_response.title()
+        
 
 
 
@@ -177,16 +267,8 @@ Now, what is the reason for your query?
 
 
 
-print(f'''Alright X, thanks for reaching out. 😊​
 
-Note: Please remember that you can finish this chat anytime by replying with 'exit' and the query will be closed.
 
-Now, what is the reason for your query?
+print(f'''general discomfort'''.title())
 
-    - General Discomfort
-    - Respiratory Difficulties
-    - Gastrointestinal Issues
-    - Joint/Muscular Discomfort
-    - Others
-''')
 
