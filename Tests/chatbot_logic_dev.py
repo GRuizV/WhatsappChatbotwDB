@@ -33,15 +33,15 @@ class MessageHandler:
         'general discomfort':['Allergies', 'Diarrhea', 'Headaches'],
         'respiratory difficulties':['Asthma', 'Chronic Bronchitis', 'Pneumonia'],
         'gastrointestinal issues':['Gastritis', 'Celiac Disease', 'Irritable Bowel Syndrom (IBS)'],
-        'joint or muscular discomfort':['Osteoarthritis', 'Gout', 'Muscle Pain (Myalgia)'],
-        'others': ['Urticaria', 'Cystitis', 'Earache']
+        'joint/muscular discomfort':['Osteoarthritis', 'Gout', 'Muscle Pain (Myalgia)'],
+        'other health issues': ['Urticaria', 'Cystitis', 'Earache']
     }
     drs_specialities_pool = {
         'general discomfort': 'Primary Care Doctors',
         'respiratory difficulties':'Pulmonologists',
         'gastrointestinal issues':'Gastroenterologists',
-        'joint or muscular discomfort':'Orthopedists',
-        'others': 'Physicians'
+        'joint/muscular discomfort':'Orthopedists',
+        'other health issues': 'Physicians'
         
         }
     drs_names_and_last_names_pool = {
@@ -130,11 +130,10 @@ class MessageHandler:
             - This must include an early closing message sent to the customer and the DB closing.           
         '''
         
-        early_closing_message = f'''Alright! Thank you for reaching out St. John's Health Group Virtual Assistance Service. ✝️🧑‍⚕️
+        early_closing_message = f'''Alright! We will close this query now.
 
-We will close this query.
-
-Thanks for preferring our services! 😊​
+Thank you for contacting out St. John's Health Group Virtual Assistance Service.✝️🧑‍⚕️
+We value your preferrence for our services! 😊​
 We hope you get better in no time ❤️‍🩹
 '''
         
@@ -193,51 +192,90 @@ Please reply as follows: *ID's Number*, *Patient's Full Name*
     '# CLI VERSION'
     user_response = input(greeting_message)
 
+    # Check if the user's answer is valid
+    while True:
+
+        if user_response.count(',') == 1:
+            break
+
+        print(f'''\nSorry, that is not a valid answer!\n''')
+
+        user_response = input(f'''Could you please provide your ID followed by your full name so I can address your request appropiately?
+
+Please reply as follows: *ID's Number*, *Patient's Full Name*
+
+''')
+
+
     #   Process the patient response to the greeting
-    chatbot_session.patient_id, chatbot_session.patient_name = [elem.strip().title() for elem in user_response.split(',')]
-
-
-
-    '''**A check of the first message is required!**'''
-
-
+    chatbot_session.patient_id, chatbot_session.patient_name = [' '.join(elem.strip().split()).lower().title() for elem in user_response.split(',')]
 
 
     # 2. PATIENT DISCOMFORT
     #   Confirm with a message using patient's name, instruct for the following step and capture the patient's discomfort 
     new_message = f'''Alright, {chatbot_session.patient_name}, thanks for reaching out. 😊​
 
-⚠️​Note: You can end this chat any time by replying with 'exit' and your query will be closed. 
+⚠️ Note: You can end this chat any time by replying with 'exit' and your query will be closed. 
 
 Now, what is the reason for your query?
 
-    - General Discomfort
-    - Respiratory Difficulties
-    - Gastrointestinal Issues
-    - Joint/Muscular Discomfort
-    - Others
+    1. General Discomfort
+    2. Respiratory Difficulties
+    3. Gastrointestinal Issues
+    4. Joint/Muscular Discomfort
+    5. Other Health Issues
 
 '''    
     
     # Check the user's reply is within expected
-    user_response = chatbot_session.check_reply(new_message, ['general discomfort', 'respiratory difficulties', 'gastrointestinal issues', 'joint/muscular discomfort', 'others'])
+    user_response = chatbot_session.check_reply(new_message, ['general discomfort', 'respiratory difficulties', 'gastrointestinal issues', 'joint/muscular discomfort', 'other health issues', '1', '2', '3', '4', '5'])
+
+        # If early exit occurred
+    if not user_response:
+        return
     
-    #   Save the Patient Discomfort
-    chatbot_session.patient_discomfort = user_response
+
+    # Save the Patient Discomfort
+        # If the answer is a number
+    if user_response in '12345':
+
+        if user_response == '1':
+            chatbot_session.patient_discomfort = 'general discomfort'
+
+        elif user_response == '2':
+            chatbot_session.patient_discomfort = 'respiratory difficulties'
+
+        elif user_response == '3':
+            chatbot_session.patient_discomfort = 'gastrointestinal issues'
+        
+        elif user_response == '4':
+            chatbot_session.patient_discomfort = 'joint/muscular discomfort'
+        
+        elif user_response == '5':
+            chatbot_session.patient_discomfort = 'other health issues'
+
+        # if the answer is not a number
+    else:        
+        chatbot_session.patient_discomfort = user_response
 
 
 
 
     # 3. PATIENT'S PRE-EXISTING DIAGNOSIS
     #   Check if the patient has a pre-existing diagnosis for their discomfort 
-    new_message = f'''Do you have a previous diagnosis for your current ailment?
+    new_message = f'''Do you have a previous diagnosis for your current {chatbot_session.patient_discomfort}?
 - Yes
 - No
 
-'''        
+'''       
    
     # Check the user's reply is within expected
     user_response = chatbot_session.check_reply(new_message, ['yes', 'no'])
+    
+        # If early exit occurred
+    if not user_response:
+        return
+    
 
     # Generating a pre-existing ailment
     if user_response.lower() == 'yes':
@@ -251,12 +289,14 @@ Now, what is the reason for your query?
         # Save the randomly generated patient pre-existence
         chatbot_session.patient_pre_existence = pre_existing_ailments[ailment_index]
 
-
+    
+    # Define patient's ailment (Gral or specific, if there is a pre-existence)
+    patient_ailment = chatbot_session.patient_pre_existence if chatbot_session.patient_pre_existence else chatbot_session.patient_discomfort
 
 
     # 4. PATIENT'S TREATING DOCTOR
     #   Check if the patient want to be treated by their "current treating doctor"
-    new_message = f'''Would you like to be attended by your current treating doctor?
+    new_message = f'''Would you like your current treating doctor to review your {patient_ailment}?
 - Yes
 - No
 
@@ -264,6 +304,11 @@ Now, what is the reason for your query?
 
     # Check the user's reply is within expected
     user_response = chatbot_session.check_reply(new_message, ['yes', 'no'])
+    
+        # If early exit occurred
+    if not user_response:
+        return
+
 
     # Generating a dr's name and last name
     if user_response.lower() == 'yes':
@@ -300,7 +345,7 @@ Now, what is the reason for your query?
 
         # Generate the text body that will be sent to the user
         #   the 'dr_speciality[:-1]' is to name the singular of the dr specialities
-        new_message = f'''Ok! Currently we count with this {dr_speciality} to take care of you ailment:
+        new_message = f'''Ok! We currently count with this {dr_speciality} that can check on your {patient_ailment}:
 1. {dr_op_1}
 2. {dr_op_2}
 3. {dr_op_3}
@@ -314,7 +359,11 @@ Which {dr_speciality[:-1]} would you like be attended by?
 
         # Check the user's reply is within expected
         user_response = chatbot_session.check_reply(new_message, user_options)
-
+        
+            # If early exit occurred
+        if not user_response:
+            return
+        
 
     # Convert the user's choice into the actual dr's full name
     if user_response in '123':
@@ -336,7 +385,7 @@ Which {dr_speciality[:-1]} would you like be attended by?
 
     # 5. TYPE OF APPOINTMENT
     #   Check whether the patient wants a virtual or presential appointment"
-    new_message = f'''Would you rather having the appointment virtuall or presentially?
+    new_message = f'''Would you rather having a virtual appointment or would you liked to be attended presentially?
 
 - Presential
 - Virtual
@@ -344,13 +393,15 @@ Which {dr_speciality[:-1]} would you like be attended by?
 '''    
 
     # Check the user's reply is within expected
-    user_response = chatbot_session.check_reply(new_message, ['presential', 'virutal'])
+    user_response = chatbot_session.check_reply(new_message, ['presential', 'virtual'])
+
+        # If early exit occurred
+    if not user_response:
+        return
+
 
     # Save patient's appointment type
     chatbot_session.appointment_type = user_response
-
-    # Define patient's ailment (Gral or specific, if there is a pre-existence)
-    patient_ailment = chatbot_session.patient_pre_existence if chatbot_session.patient_pre_existence else chatbot_session.patient_discomfort
 
     # Configure the closing message according to the appointment type selected
     if chatbot_session.appointment_type == 'presential':
@@ -367,32 +418,27 @@ Which {dr_speciality[:-1]} would you like be attended by?
         appointment_med_center = chatbot_session.med_cent_pool[med_center_index]
 
         # Generate the closing message
-        new_message = f'''Alright! Thank you for reaching out St. John's Health Group Virtual Assistance Service.✝️🧑‍⚕️
-
-The medical appointment for the patient {chatbot_session.patient_name}, identified with ID #{chatbot_session.patient_id} was booked with Dr. {chatbot_session.treating_dr}
+        new_message = f'''Alright! The medical appointment for the patient {chatbot_session.patient_name}, identified with ID #{chatbot_session.patient_id} was booked with Dr. {chatbot_session.treating_dr}
 in {appointment_med_center} the next {appointment_weekday} at {appointment_time} to review patient's {patient_ailment.title()}.
 
 Please remember to be present at reception 15 minutes prior to your appointment with your valid ID.
 
-Thanks for preferring our services! 😊​
+Thank you for contacting St. John's Health Group Virtual Assistance Service.✝️🧑‍⚕️
+We value your preferrence for our services! 😊​
 We hope you get better in no time ❤️‍🩹
-
 ​'''
 
 
     else:
 
         # Generate the closing message
-        new_message = f'''Alright! Thank you for reaching out St. John's Health Group Virtual Assistance Service. ✝️🧑‍⚕️
-
-The medical appointment for the patient {chatbot_session.patient_name}, identified with ID #{chatbot_session.patient_id} was booked with Dr. {chatbot_session.treating_dr}
-virtually to review patient's {patient_ailment.title()}.
+        new_message = f'''Alright! The medical appointment for the patient {chatbot_session.patient_name}, identified with ID #{chatbot_session.patient_id} was booked with Dr. {chatbot_session.treating_dr} virtually to review patient's {patient_ailment.title()}.
 
 Please remember be online 10 minutes prior to the appointment and also be sure to have a stable connection, access to a webcam and microphone to make sure the appointment will happen without inconvenience.
 
-Thanks for preferring our services! 😊​
+Thank you for contacting out St. John's Health Group Virtual Assistance Service.✝️🧑‍⚕️
+We value your preferrence for our services! 😊​
 We hope you get better in no time ❤️‍🩹
-
 ​'''
 
 
