@@ -59,6 +59,14 @@ class MessageHandler:
 
     # INSTANCE DEFINITION - Instance variables
     def __init__(self) -> None:
+
+        self.conversation_input:dict = {
+            'user_response':None,
+            'last_response':None,
+            'replying_options':None,
+            'doctor_speciality': False
+        }
+        self.conversation_stage:str = '' # Stages are: '' / 'greeting' / 'symptoms' / 'previous_diagnosis' / 'select_doctor' -> opt:'doctor_speciality' / 'appointment_time' / 'appointment_type' / 'completed'
         self.user_number:str = None
         self.patient_id:str = None
         self.patient_name:str = None
@@ -66,6 +74,7 @@ class MessageHandler:
         self.patient_pre_existence:str = None
         self.patient_ailment:str = None
         self.treating_dr:str = None
+        self.dr_speciality:str = None
         self.appointment_day_and_time:str = None
         self.appointment_type:str = None
         self.appointment_location:str = None
@@ -74,6 +83,81 @@ class MessageHandler:
 
 
     # CHAT FUNCTIONS
+    def process_message(self, message:str='') -> str:
+
+        '''This function process the incoming message and directs the execution to its respective stage'''
+
+        if self.conversation_stage == '':
+            
+            # Greeting Message
+            greeting_message = f'''Hi there! 👋
+
+🧑‍⚕️​ Welcome to St. John's Health Group Virtual Assistant.✝️​⛪​ 
+
+I'm here to help you with any questions or issues you might have regarding your health. 
+
+Before we move on, could you please provide your ID followed by your full name so I can address your request properly?
+
+Please reply as follows: *ID's Number*, *Patient's Full Name*'''
+            
+            # Send the greeting message
+            self.conversation_input['user_response'] = input(greeting_message)
+            self.conversation_stage = 'greeting' # Change the stage to when the user responds it goes to the handle_greeting func
+
+        
+        elif self.conversation_stage == 'greeting':
+            user_response, last_message, replying_options = self.handle_greeting(user_response=self.conversation_input['user_response'])
+            self.conversation_input['user_response'] = user_response
+            self.conversation_input['last_message'] = last_message
+            self.conversation_input['replying_options'] = replying_options
+            
+
+        elif self.conversation_stage == 'symptoms':
+            user_response, last_message, replying_options = self.handle_symptoms(user_response=self.conversation_input['user_response'], last_message=self.conversation_input['last_message'], replying_options=self.conversation_input['replying_options'])
+            self.conversation_input['user_response'] = user_response
+            self.conversation_input['last_message'] = last_message
+            self.conversation_input['replying_options'] = replying_options
+
+
+        elif self.conversation_stage == 'previous_diagnosis':
+            user_response, last_message, replying_options = self.previous_diagnosis(user_response=self.conversation_input['user_response'], last_message=self.conversation_input['last_message'], replying_options=self.conversation_input['replying_options'])
+            self.conversation_input['user_response'] = user_response
+            self.conversation_input['last_message'] = last_message
+            self.conversation_input['replying_options'] = replying_options
+
+
+        elif self.conversation_stage == 'select_doctor':
+            user_response, last_message, replying_options = self.select_doctor(user_response=self.conversation_input['user_response'], last_message=self.conversation_input['last_message'], replying_options=self.conversation_input['replying_options'])
+            self.conversation_input['user_response'] = user_response
+            self.conversation_input['last_message'] = last_message
+            self.conversation_input['replying_options'] = replying_options
+            
+
+        elif self.conversation_stage == 'doctor_speciality':
+            user_response, last_message, replying_options = self.doctor_speciality(user_response=self.conversation_input['user_response'], last_message=self.conversation_input['last_message'], replying_options=self.conversation_input['replying_options'])
+            self.conversation_input['user_response'] = user_response
+            self.conversation_input['last_message'] = last_message
+            self.conversation_input['replying_options'] = replying_options
+
+       
+        elif self.conversation_stage == 'appointment_time':
+            pass
+            
+
+
+        return f'''current stage: {self.conversation_stage}'''
+        
+
+
+
+
+
+
+
+
+
+        
+
     def send_message(self, body_text:str) -> None:
 
         '''This function send a message to the user through Twilio's API'''
@@ -93,46 +177,33 @@ class MessageHandler:
 
         
         '# CLI VERSION'
-        print(body_text)
+        user_response = input(body_text)
+
+        return user_response
     
-    def check_reply(self, messange:str, reply_options:list[str]) -> str:
+    def check_reply(self, user_response:str, last_message:str, reply_options:list[str]) -> str:
 
         '''This function validates that the user's response are within expected.'''
-
-        while True:
-            
-            '# ORIGINAL VERSION'
-            # # Send the greeting message to the user
-            # self.send_message(messange)
-
-            '# CLI VERSION'
-            user_response = input(messange)
         
+        # Check for early exit
+        if user_response.lower() == 'exit':
+            return self.early_exit() # Early exit the conversation
 
-            # # Need to figure how to capture the response from the server
-            # user_response = ''' Something to take the User's response from the server '''
-            
+        # Check if the user's response is within expected
+        if user_response.lower() in reply_options:
+            return user_response.lower()                     
+        
+        # Define the Non-complying user's reply
+        non_complying_reply = f'''Sorry! I didn't understand that. Could you please answer with the options provided?'''
 
-            # Check for early exit
-            if user_response.lower() == 'exit':
-                return self.early_exit() # Early exit the conversation
-            
+        # Send the Non-complying user's reply
+        self.send_message(non_complying_reply)
 
-            # Check if the user's response is within expected
-            if user_response.lower() in reply_options:
-                return user_response.lower()
-            
-            
-            # # Non-complying user's reply
-            non_complying_reply = f'''Sorry! I didn't understand that. Could you please answer with the options provided?'''
+        # FOR THE INTEGRATED VERSION: Send again the last message to the user to refresh the options provided                 
+        response = input(last_message)
 
-            '# ORIGINAL VERSION'
-            # self.send_message(non_complying_reply)
-            
-            
-            '# CLI VERSION'
-            print(non_complying_reply)
-            
+        return response.lower()
+
     def early_exit(self) -> str:
 
         '''
@@ -151,39 +222,15 @@ We hope you get better in no time ❤️‍🩹
         '# ORIGINAL VERSION'
         # PENDING...
         
-        '# CLI VERSION'
+        '# CLI VERSION - TESTING'
         return print(early_closing_message)
 
 
 
+    # CHAT STAGES / 'stage_name'
 
-    # CHAT STEPS
-
-    #   1. Greeting
-    def handle_greeting(self) -> None:
-
-        #   Greeting Message
-        greeting_message = f'''Hi there! 👋
-
-🧑‍⚕️​ Welcome to St. John's Health Group Virtual Assistant.✝️​⛪​ 
-
-I'm here to help you with any questions or issues you might have regarding your health. 
-
-Before we move on, could you please provide your ID followed by your full name so I can address your request properly?
-
-Please reply as follows: *ID's Number*, *Patient's Full Name*'''
-        
-
-        '# ORIGINAL VERSION'
-        # #   Send the greeting message to the user
-        # self.send_message(greeting_message)
-
-        # #   Need to figure how to capture the response from the server
-        # user_response = '''Something to take the User's response from the server '''
-
-
-        '# CLI VERSION'
-        user_response = input(greeting_message)
+    #   1. Greeting / 'geeting'
+    def handle_greeting(self, user_response:str) -> tuple[str]:      
 
         # Check if the user's answer is valid
         while True:
@@ -197,71 +244,120 @@ Please reply as follows: *ID's Number*, *Patient's Full Name*'''
 
 Please reply as follows: *ID's Number*, *Patient's Full Name''')
 
-
         #   Process the patient response to the greeting
         self.patient_id, self.patient_name = [' '.join(elem.strip().split()).lower().title() for elem in user_response.split(',')]
 
-    #   2. Symptoms Handling (Patient's discomfort)
-    def handle_symptoms(self) -> None:
+        #   Change the stage
+        self.conversation_stage = 'symptoms'
 
-        # Confirm with a message using patient's name, instruct for the following step and capture the patient's discomfort 
+        #   Prompt the user confirming their input and leading to the next stage
         new_message = f'''Alright, {self.patient_name}, thanks for reaching out. 😊​
+Now, Let's start checking on your symptoms.
+                          
+⚠️ Note: You can end this chat any time by replying with 'exit' and your query will be closed
+                          
+Could you please describe your symptoms with the following options?
 
-⚠️ Note: You can end this chat any time by replying with 'exit' and your query will be closed. 
-
-Now, could you please describe with this options your symptoms?
-
-    1. General Discomfort
-    2. Respiratory Difficulties
-    3. Gastrointestinal Issues
-    4. Joint/Muscular Discomfort
-    5. Other Health Issues'''    
+1. General Discomfort
+2. Respiratory Difficulties
+3. Gastrointestinal Issues
+4. Joint/Muscular Discomfort
+5. Other Health Issues'''
         
+        # Send the message & capture response
+        user_response = self.send_message(new_message)
+
+        # Define the Last Message if is needed to be reminded to the user
+        last_message = f'''Could you please describe your symptoms with the following options?
+
+1. General Discomfort
+2. Respiratory Difficulties
+3. Gastrointestinal Issues
+4. Joint/Muscular Discomfort
+5. Other Health Issues'''
+
+        # Define the replying options for the next stage checking
+        replying_options = ['general discomfort', 'respiratory difficulties', 'gastrointestinal issues', 'joint/muscular discomfort', 'other health issues', '1', '2', '3', '4', '5']
+
+        # The las message is returned in case is needed to be re sended to clarify options for the user
+        return user_response, last_message, replying_options
+
+
+    #   2. Symptoms Handling / 'symptoms'
+    def handle_symptoms(self, user_response:str, last_message:str, replying_options:list[str]) -> tuple[str]:
+
         # Check the user's reply is within expected
-        user_response = self.check_reply(new_message, ['general discomfort', 'respiratory difficulties', 'gastrointestinal issues', 'joint/muscular discomfort', 'other health issues', '1', '2', '3', '4', '5'])
+        response = self.check_reply(user_response, last_message, replying_options)
+
+        while response not in replying_options:
+            
+            response = self.check_reply(user_response, last_message, replying_options)
 
             # If early exit occurred
-        if not user_response:
-            return
-        
+            if not response:
+                return
+     
 
         # Save the Patient Discomfort
             # If the answer is a number
-        if user_response in '12345':
+        if response in '12345':
 
-            if user_response == '1':
+            if response == '1':
                 self.patient_discomfort = 'general discomfort'
 
-            elif user_response == '2':
+            elif response == '2':
                 self.patient_discomfort = 'respiratory difficulties'
 
-            elif user_response == '3':
+            elif response == '3':
                 self.patient_discomfort = 'gastrointestinal issues'
             
-            elif user_response == '4':
+            elif response == '4':
                 self.patient_discomfort = 'joint/muscular discomfort'
             
-            elif user_response == '5':
+            elif response == '5':
                 self.patient_discomfort = 'other health issues'
 
             # if the answer is not a number
         else:        
-            self.patient_discomfort = user_response
+            self.patient_discomfort = response
 
 
-    #  Check if the patient has a pre-existing diagnosis for their discomfort 
-        new_message = f'''Do you have a previous diagnosis for your current {self.patient_discomfort}? (Yes/No)'''       
-    
+        # Change the stage
+        self.conversation_stage = 'previous_diagnosis'
+
+        #   Prompt the user confirming their input and leading to the next stage
+        new_message = f'''Do you have a previous diagnosis for your current {self.patient_discomfort}? (Yes/No)'''
+        
+        # Send the message & capture response
+        user_response = self.send_message(new_message)
+
+        # Define the Last Message if is needed to be reminded to the user
+        last_message = new_message
+
+        # Define the replying options for the next stage checking
+        replying_options = ['yes', 'no']
+
+        # The las message is returned in case is needed to be re sended to clarify options for the user
+        return user_response, last_message, replying_options
+
+
+    #   2.1 Pre-Existence Handling / 'previous_diagnosis'
+    def previous_diagnosis(self, user_response:str, last_message:str, replying_options:list[str]) -> tuple[str]:
+        
         # Check the user's reply is within expected
-        user_response = self.check_reply(new_message, ['yes', 'no'])
-        
-        # If early exit occurred
-        if not user_response:
-            return
-        
+        response = self.check_reply(user_response, last_message, replying_options)
+
+        while response not in replying_options:
+            
+            response = self.check_reply(user_response, last_message, replying_options)
+
+            # If early exit occurred
+            if not response:
+                return
+
 
         # Generating a pre-existing ailment
-        if user_response.lower() == 'yes':
+        if response.lower() == 'yes':
 
             # pre_existences_pool dict Class var, in 'patient_discomfort' instance var. 
             pre_existing_ailments = self.pre_existences_pool[self.patient_discomfort]
@@ -271,26 +367,48 @@ Now, could you please describe with this options your symptoms?
 
             # Save the randomly generated patient pre-existence
             self.patient_pre_existence = pre_existing_ailments[ailment_index]
-  
-    #   3. Treating doctor selection
-    def select_doctor(self) -> None:
 
-        # Define patient's ailment (Gral or specific, if there is a pre-existence)
+        # Set the patient's ailment
         self.patient_ailment = self.patient_pre_existence if self.patient_pre_existence else self.patient_discomfort
 
-        # Check if the patient want to be treated by their "current treating doctor"
-        new_message = f'''Would you like your current treating doctor to review your {self.patient_ailment}? (Yes/No)'''    
 
-        # Check the user's reply is within expected
-        user_response = self.check_reply(new_message, ['yes', 'no'])
+        # Change the stage
+        self.conversation_stage = 'select_doctor'
+
+        # Prompt the user confirming their input and leading to the next stage
+        new_message = f'''Would you like your current treating doctor to review your {self.patient_ailment}? (Yes/No)'''
         
+        # Send the message & capture response
+        user_response = self.send_message(new_message)
+
+        # Define the Last Message if is needed to be reminded to the user
+        last_message = new_message
+
+        # Define the replying options for the next stage checking
+        replying_options = ['yes', 'no']
+
+        # The las message is returned in case is needed to be re sended to clarify options for the user
+        return user_response, last_message, replying_options
+
+
+    #   3. Treating doctor: Doctor Selecting / 'select_doctor'
+    def select_doctor(self, user_response:str, last_message:str, replying_options:list[str]) -> tuple[str]:
+
+    
+        # Check the user's reply is within expected
+        response = self.check_reply(user_response, last_message, replying_options)
+
+        while response not in replying_options:
+            
+            response = self.check_reply(user_response, last_message, replying_options)
+
             # If early exit occurred
-        if not user_response:
-            return
+            if not response:
+                return
 
 
         # Generating a dr's full name
-        if user_response.lower() == 'yes':
+        if response.lower() == 'yes':
 
             # Generate dr's names and last names options. 
             dr_names_options = self.drs_names_and_last_names_pool['names']
@@ -301,10 +419,81 @@ Now, could you please describe with this options your symptoms?
             dr_last_name_index = randint(0, len(dr_last_names_options)-1)
 
             # Define the actual dr's name and last name
-            user_response = f'{dr_names_options[dr_names_index]} {dr_last_names_options[dr_last_name_index]}'        
+            response = f'{dr_names_options[dr_names_index]} {dr_last_names_options[dr_last_name_index]}'        
 
-        else:
+            # Save dr's selection
+            self.treating_dr = response
+
+        
+        # Change the stage depending on if a Doctor has already been selected
+        self.conversation_stage = 'appointment_time' if self.treating_dr else 'doctor_speciality'
+
+
+        # Direct the next step depending on if the patient want to select a new doctor or they don't
+        if self.conversation_stage == 'appointment_time':
+
+
+            # First, confirm the the name of the current treating doctor
+            self.send_message(f'''Ok, it's confirmed that Dr. {self.treating_dr} will now be attending you''')
+
+
+            # Next, Define the day and the time of the appointment randomly
+            #   Generate day and time options. 
+            time_options = self.time_pool
+            day_options = self.weekday_pool
+
+            #   Generate seeds to randomly generate 2 different options for day and time for the appointment
+            time_op1, time_op2, = sample(time_options, 2)
+            day_op1, day_op2 = sample(day_options, 2)
+
+            #   Define the actual 2 options of day/time for the user to choose
+            day_and_time_op_1 = f'{day_op1} {time_op1}'
+            day_and_time_op_2 = f'{day_op2} {time_op2}'
+
+
+            # And finally, create the message for the user to confirm their input and leading to the next stage
+            new_message = f'''Currently Dr. {self.treating_dr} has the following time availability:
+1. {day_and_time_op_1}
+2. {day_and_time_op_2}
+
+Which one would fit best for you?'''
             
+            # Send the message & capture response
+            user_response = self.send_message(new_message)
+
+            # Define the Last Message if is needed to be reminded to the user
+            last_message = new_message
+
+            # Define the replying options for the next stage checking
+            replying_options = [day_and_time_op_1, day_and_time_op_2, '1', '2']
+
+            # The las message is returned in case is needed to be re sended to clarify options for the user
+            return user_response, last_message, replying_options
+        
+
+        else:   
+
+            # Create the message leading to the next stage
+            new_message = f'''No problem, in that case we will now select a new doctor for you'''
+            
+            # Send the message
+            self.send_message(new_message)
+
+            # Return empty strings to no break the return structure in the process_message function
+            return '', '', ''
+
+
+    #   3.1 Doctor Speciality / 'doctor_speciality'
+    def doctor_speciality(self, user_response:str, last_message:str, replying_options:list[str]) -> tuple[str]:
+        
+        '''This function will guide the user to select a new treating doctor during the conversation
+            - The 'self.conversation_input['doctor_speciality']' parameter is passed to check is the conversation already offered a doctor option and 
+                the usear already picked one
+        '''
+        
+        # If the conversation hasn't passed over this part
+        if not self.conversation_input['doctor_speciality']:
+
             # Generate a doctor's speciality based on patient discomfort
             dr_speciality = self.drs_specialities_pool[self.patient_discomfort]
 
@@ -330,40 +519,60 @@ Now, could you please describe with this options your symptoms?
 3. {dr_op_3}
 
 Which {dr_speciality[:-1]} would you like be attended by?'''
-            
-            # Create the list of possible replies
-            user_options = [dr_op_1.lower(), dr_op_2.lower(), dr_op_3.lower(), '1', '2', '3']
+        
+            # Send the message & capture response
+            user_response = self.send_message(new_message)
 
-            # Check the user's reply is within expected
-            user_response = self.check_reply(new_message, user_options)
+            # Define the Last Message if is needed to be reminded to the user
+            last_message = new_message
+
+            # Define the replying options for the next stage checking
+            replying_options = [dr_op_1.lower(), dr_op_2.lower(), dr_op_3.lower(), '1', '2', '3']
+
+            # Change the 'doctor_speciality' parameter in the conversation_input instance variable to True
+            self.conversation_input['doctor_speciality'] = True
+
+            # The las message is returned in case is needed to be re sended to clarify options for the user
+            return user_response, last_message, replying_options
+
+
+
+        # if the conversation already offered doctors options, check the user's reply is within expected
+        response = self.check_reply(user_response, last_message, replying_options)
+
+        while response not in replying_options:
             
-                # If early exit occurred
-            if not user_response:
+            response = self.check_reply(user_response, last_message, replying_options)
+
+            # If early exit occurred
+            if not response:
                 return
             
 
         # Convert the user's choice into the actual dr's full name
-        if user_response in '123':
+        if response in '123':
 
-            if user_response == '1':
-                user_response = dr_op_1
+            if response == '1':
+                response = replying_options[0]
             
-            elif user_response == '2':
-                user_response = dr_op_2
+            elif response == '2':
+                response = replying_options[1]
             
             else:
-                user_response = dr_op_3
+                response = replying_options[2]
         
+
         # Save the user's choosen doctor
-        self.treating_dr = user_response.title()
+        self.treating_dr = response.title()
+        
+        # Prompt the user the name of the treating doctor
+        self.send_message(f'''Ok, it's confirmed that Dr. {self.treating_dr} will now be attending you''')
 
-        # Prompt the User the name of the treating doctor
-        self.send_message(f'''Ok! Dr. {self.treating_dr} will attend you''')
 
-    #   4. Appointment Day and Time setting
-    def appointment_time_booking(self) -> None:
+        # Move on to the next stage
+        self.conversation_stage = 'appointment_time'
 
-        # Define the day and the time of the appointment randomly
+        # Next, Define the day and the time of the appointment randomly
         #   Generate day and time options. 
         time_options = self.time_pool
         day_options = self.weekday_pool
@@ -375,38 +584,62 @@ Which {dr_speciality[:-1]} would you like be attended by?'''
         #   Define the actual 2 options of day/time for the user to choose
         day_and_time_op_1 = f'{day_op1} {time_op1}'
         day_and_time_op_2 = f'{day_op2} {time_op2}'
-            
 
-        # Create the day/time availability message
+
+        # And finally, create the message for the user to confirm their input and leading to the next stage
         new_message = f'''Currently Dr. {self.treating_dr} has the following time availability:
 1. {day_and_time_op_1}
 2. {day_and_time_op_2}
 
-Which one would fit best for you?
-'''    
+Which one would fit best for you?'''
         
+        # Send the message & capture response
+        user_response = self.send_message(new_message)
+
+        # Define the Last Message if is needed to be reminded to the user
+        last_message = new_message
+
+        # Define the replying options for the next stage checking
+        replying_options = [day_and_time_op_1, day_and_time_op_2, '1', '2']
+
+        # The las message is returned in case is needed to be re sended to clarify options for the user
+        return user_response, last_message, replying_options
+
+
+
+
+    #   4. Appointment Day and Time Setting / 'appointment_time'
+    def appointment_time_booking(self, user_response:str, last_message:str, replying_options:list[str]) -> tuple[str]:
+
+
         # Check the user's reply is within expected
-        user_response = self.check_reply(new_message, [day_op1, day_op2, '1', '2'])
-        
+        response = self.check_reply(user_response, last_message, replying_options)
+
+        while response not in replying_options:
+            
+            response = self.check_reply(user_response, last_message, replying_options)
+
             # If early exit occurred
-        if not user_response:
-            return
+            if not response:
+                return
             
 
-        # Convert the user's choice into the actual dr's full name
-        if user_response in '12':
+        # # Convert the user's choice into the actual dr's full name
+        # if user_response in '12':
 
-            if user_response == '1':
-                self.appointment_day_and_time = day_and_time_op_1
+        #     if user_response == '1':
+        #         self.appointment_day_and_time = day_and_time_op_1
             
-            else:
-                self.appointment_day_and_time = day_and_time_op_2
+        #     else:
+        #         self.appointment_day_and_time = day_and_time_op_2
         
         
         # Prompt the User the day and time of the appointment.
         self.send_message(f'''Ok! the appointment with Dr. {self.treating_dr} to check on your {self.patient_ailment.title()} is booked for next {self.appointment_day_and_time}''')
     
-    #   5. Appointment type setting
+
+
+    #   5. Appointment type setting / 'appointment_type'
     def select_appointment_type(self) -> None:
 
         #   Check whether the patient wants a virtual or presential appointment"
@@ -490,31 +723,160 @@ chatbot_session.user_number = '3205503934'
 
 
 
-# Conversation Flow
+# CONVERSATION FLOW TESTING
 
-# #   1. GREETING
-chatbot_session.handle_greeting()
+'# Version 1 - Testing'
+# def test_v1():
+#     # #   1. GREETING
+#     chatbot_session.handle_greeting()
 
-# #   2. PATIENT DISCOMFORT 
-chatbot_session.handle_symptoms()
+#     # #   2. PATIENT DISCOMFORT 
+#     chatbot_session.handle_symptoms()
 
-# #   3. TREATING DOCTOR
-# chatbot_session.patient_discomfort = 'respiratory difficulties' # Manual definition for testing purposes
-# chatbot_session.patient_pre_existence = 'Pneumonia' # Manual definition for testing purposes
-chatbot_session.select_doctor()
+#     # #   3. TREATING DOCTOR
+#     # chatbot_session.patient_discomfort = 'respiratory difficulties' # Manual definition for testing purposes
+#     # chatbot_session.patient_pre_existence = 'Pneumonia' # Manual definition for testing purposes
+#     chatbot_session.select_doctor()
 
-# #   4. APPOINTMENT TYPE
-# chatbot_session.patient_ailment = 'Pneumonia' # Manual definition for testing purposes
-# chatbot_session.treating_dr = 'Leon Sardi' # Manual definition for testing purposes
-chatbot_session.appointment_time_booking()
+#     # #   4. APPOINTMENT TYPE
+#     # chatbot_session.patient_ailment = 'Pneumonia' # Manual definition for testing purposes
+#     # chatbot_session.treating_dr = 'Leon Sardi' # Manual definition for testing purposes
+#     chatbot_session.appointment_time_booking()
 
-#   5. APPOINTMENT TYPE
-# chatbot_session.patient_ailment = 'Pneumonia' # Manual definition for testing purposes
-# chatbot_session.treating_dr = 'Leon Sardi' # Manual definition for testing purposes
-# chatbot_session.appointment_day_and_time = 'Wednesday 4:45 PM' # Manual definition for testing purposes
-chatbot_session.select_appointment_type()
+#     #   5. APPOINTMENT TYPE
+#     # chatbot_session.patient_ailment = 'Pneumonia' # Manual definition for testing purposes
+#     # chatbot_session.treating_dr = 'Leon Sardi' # Manual definition for testing purposes
+#     # chatbot_session.appointment_day_and_time = 'Wednesday 4:45 PM' # Manual definition for testing purposes
+#     chatbot_session.select_appointment_type()
 
-x=0
+
+
+
+
+
+'# Version 2'
+
+'General Testing'
+# stage = ''
+
+# while 'completed' not in stage:
+
+#     stage = chatbot_session.process_message()
+
+#     print(stage)
+
+
+
+'Testing the Stage 2: Symptoms'
+
+# # Define input from previous stages
+# chatbot_session.patient_id='1'
+# chatbot_session.patient_name = 'G'
+
+# # Defining the input for the stage
+# chatbot_session.conversation_stage = 'symptoms'
+# chatbot_session.conversation_input['user_response'] = f'''4'''
+# chatbot_session.conversation_input['last_message'] = f'''Could you please describe your symptoms with the following options?
+
+# 1. General Discomfort
+# 2. Respiratory Difficulties
+# 3. Gastrointestinal Issues
+# 4. Joint/Muscular Discomfort
+# 5. Other Health Issues'''
+# chatbot_session.conversation_input['replying_options'] = ['general discomfort', 'respiratory difficulties', 'gastrointestinal issues', 'joint/muscular discomfort', 'other health issues', '1', '2', '3', '4', '5']
+
+# # Running the Script
+# chatbot_session.process_message()
+
+
+
+'Testing the Stage 2.1: Pre-Existence'
+
+# # Define input from previous stages
+# chatbot_session.patient_id='1'
+# chatbot_session.patient_name = 'G'
+# chatbot_session.patient_discomfort = 'joint/muscular discomfort'
+
+# # Define the input for the stage
+# chatbot_session.conversation_stage = 'previous_diagnosis'
+# chatbot_session.conversation_input['user_response'] = f'''dfgdf'''
+# chatbot_session.conversation_input['last_message'] = f'''Do you have a previous diagnosis for your current {chatbot_session.patient_discomfort}? (Yes/No)'''
+# chatbot_session.conversation_input['replying_options'] = ['yes', 'no']
+
+# # Run the Script
+# chatbot_session.process_message()
+
+
+
+'Testing the Stage 3: Doctor Selecting'
+
+# # Define input from previous stages
+# chatbot_session.patient_id='1'
+# chatbot_session.patient_name = 'G'
+# chatbot_session.patient_discomfort = 'joint/muscular discomfort'
+# chatbot_session.patient_pre_existence = 'Osteoarthritis'
+# chatbot_session.patient_ailment = 'Osteoarthritis'
+
+# # Define the input for the stage
+# chatbot_session.conversation_stage = 'select_doctor'
+# chatbot_session.conversation_input['user_response'] = f'''dfgdf'''
+# chatbot_session.conversation_input['last_message'] = f'''Would you like your current treating doctor to review your {chatbot_session.patient_ailment}? (Yes/No)'''
+# chatbot_session.conversation_input['replying_options'] = ['yes', 'no']
+
+# # Run the Script
+# chatbot_session.process_message()
+
+
+
+'Testing the Stage 3.1: Doctor Speciality'
+
+# # Define input from previous stages
+# chatbot_session.patient_id='1'
+# chatbot_session.patient_name = 'G'
+# chatbot_session.patient_discomfort = 'joint/muscular discomfort'
+# chatbot_session.patient_pre_existence = 'Osteoarthritis'
+# chatbot_session.patient_ailment = 'Osteoarthritis'
+
+# # Define the input for the stage
+# chatbot_session.conversation_stage = 'doctor_speciality'
+# chatbot_session.conversation_input['user_response'] = f'''dfgdf'''
+# chatbot_session.conversation_input['last_message'] = f'''Ok, it's confirmed that Dr. Susan Miller will now be attending you
+# Currently Dr. Susan Miller has the following time availability:
+# 1. Monday 8:15 AM
+# 2. Wednesday 1:00 PM'''
+# chatbot_session.conversation_input['replying_options'] = ['1', '2']
+
+# # Run the Script
+# while True:
+#     chatbot_session.process_message()
+
+#     if chatbot_session.conversation_stage != 'doctor_speciality':
+#         break
+    
+# x = 0
+
+
+
+'Testing the Stage 4: Appointment Day and Time Setting'
+
+# Define input from previous stages
+chatbot_session.patient_id='1'
+chatbot_session.patient_name = 'G'
+chatbot_session.patient_discomfort = 'joint/muscular discomfort'
+chatbot_session.patient_pre_existence = 'Osteoarthritis'
+chatbot_session.patient_ailment = 'Osteoarthritis'
+chatbot_session.treating_dr = 'Susan Miller'
+
+# Define the input for the stage
+chatbot_session.conversation_stage = 'appointment_time'
+chatbot_session.conversation_input['user_response'] = f'''dfgdf'''
+chatbot_session.conversation_input['last_message'] = f'''Currently Dr. Susan Miller has the following time availability:
+1. Monday 8:15 AM
+2. Wednesday 1:00 PM'''
+chatbot_session.conversation_input['replying_options'] = ['Monday 8:15 AM', 'Wednesday 1:00 PM', '1', '2']
+
+# Run the Script
+chatbot_session.process_message()
 
 
 
