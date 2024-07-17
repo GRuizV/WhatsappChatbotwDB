@@ -110,6 +110,7 @@ Please reply as follows: *ID's Number*, *Patient's Full Name*'''
             self.conversation_input['user_response'] = user_response
             self.conversation_input['last_message'] = last_message
             self.conversation_input['replying_options'] = replying_options
+
             
 
         elif self.conversation_stage == 'symptoms':
@@ -294,6 +295,11 @@ Could you please describe your symptoms with the following options?
 
             # If early exit occurred
             if not user_response:
+
+                # Change the stage to completed
+                self.conversation_stage = 'completed'
+
+                # Return in the same format expected to not break the chat logic
                 return None, None, None
      
 
@@ -350,6 +356,11 @@ Could you please describe your symptoms with the following options?
 
             # If early exit occurred
             if not user_response:
+
+                # Change the stage to completed
+                self.conversation_stage = 'completed'
+
+                # Return in the same format expected to not break the chat logic
                 return None, None, None
 
 
@@ -399,7 +410,16 @@ Could you please describe your symptoms with the following options?
 
             # If early exit occurred
             if not user_response:
+
+                # Change the stage to completed
+                self.conversation_stage = 'completed'
+
+                # Return in the same format expected to not break the chat logic
                 return None, None, None
+
+
+        # Generate a doctor's speciality based on patient discomfort
+        self.dr_speciality = self.drs_specialities_pool[self.patient_discomfort]
 
 
         # Generating a dr's full name
@@ -419,8 +439,6 @@ Could you please describe your symptoms with the following options?
             # Save dr's selection
             self.treating_dr = user_response
 
-            # Generate a doctor's speciality based on patient discomfort
-            self.dr_speciality = self.drs_specialities_pool[self.patient_discomfort]
 
         
         # Change the stage depending on if a Doctor has already been selected
@@ -540,6 +558,11 @@ Which {self.dr_speciality[:-1]} would you like be attended by?'''
 
             # If early exit occurred
             if not user_response:
+                
+                # Change the stage to completed
+                self.conversation_stage = 'completed'
+
+                # Return in the same format expected to not break the chat logic
                 return None, None, None
             
 
@@ -611,6 +634,11 @@ Which one would fit best for you?'''
 
             # If early exit occurred: This works for the integrated version
             if not user_response:
+
+                # Change the stage to completed
+                self.conversation_stage = 'completed'
+
+                # Return in the same format expected to not break the chat logic
                 return None, None, None
             
 
@@ -660,6 +688,11 @@ Which one would fit best for you?'''
 
             # If early exit occurred
             if not user_response:
+                
+                # Change the stage to completed
+                self.conversation_stage = 'completed'
+
+                # Return in the same format expected to not break the chat logic
                 return None, None, None
 
 
