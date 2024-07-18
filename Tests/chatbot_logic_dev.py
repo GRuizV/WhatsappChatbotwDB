@@ -25,7 +25,7 @@ from random import randint, sample
 
 
 
-# This class will be the one who manage the patient's info storing, generating appointment variables and functions related with the chat
+# This class will be who manage the patient's info storing, generating appointment variables and functions related with the chat
 class MessageHandler:
 
     # CLASS VARIABLES - Variables Pools
@@ -150,7 +150,7 @@ Please reply as follows: *ID's Number*, *Patient's Full Name*'''
        
         elif self.conversation_stage == 'appointment_type':
             self.select_appointment_type(user_response=self.conversation_input['user_response'], last_message=self.conversation_input['last_message'], replying_options=self.conversation_input['replying_options'])      
-            x = 0
+            
 
         return f'''current stage: {self.conversation_stage}'''
         
