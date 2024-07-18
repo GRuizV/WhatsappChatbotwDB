@@ -77,7 +77,7 @@ class MessageHandler:
 
         self.conversation_input:dict = {
             'user_response':None,
-            'last_response':None,
+            'last_message':None,
             'replying_options':None,
             'doctor_speciality': False  # This is used in stage self.conversation_input['doctor_speciality' to fall back to the same stage but having offered dr options to the user
         }
@@ -119,18 +119,12 @@ Please reply as follows: _ID's Number_, _Patient's Full Name_'''
 
             # Change the stage to when the user responds it goes to the handle_greeting func
             self.conversation_stage = 'greeting' 
-
         
         elif self.conversation_stage == 'greeting':
             self.handle_greeting()
-
         
         elif self.conversation_stage == 'symptoms':
-            user_response, last_message, replying_options = self.handle_symptoms(user_response=self.conversation_input['user_response'], last_message=self.conversation_input['last_message'], replying_options=self.conversation_input['replying_options'])
-            self.conversation_input['user_response'] = user_response
-            self.conversation_input['last_message'] = last_message
-            self.conversation_input['replying_options'] = replying_options
-
+             self.handle_symptoms()
 
         elif self.conversation_stage == 'previous_diagnosis':
             user_response, last_message, replying_options = self.previous_diagnosis(user_response=self.conversation_input['user_response'], last_message=self.conversation_input['last_message'], replying_options=self.conversation_input['replying_options'])
@@ -181,45 +175,58 @@ Please reply as follows: _ID's Number_, _Patient's Full Name_'''
             logger.error(f"Error sending message to {self.user_number}: {e}")
 
     
-    def check_reply(self, user_response:str, last_message:str, reply_options:list[str]) -> str:
+    def check_reply(self) -> str:
 
         '''This function validates that the user's response are within expected.'''
         
         # Check for early exit
-        if user_response.lower() == 'exit':
-            return self.early_exit() # Early exit the conversation
+        if self.conversation_input['user_response'].lower() == 'exit':
+            return self.early_exit()
 
         # Check if the user's response is within expected
-        if user_response.lower() in reply_options:
-            return user_response.lower()                     
+        elif self.conversation_input['user_response'].lower() in self.conversation_input['replying_options']:
+
+            # Update the user's response
+            self.conversation_input['user_response'] = self.conversation_input['user_response'].lower()
+
+            # Return 'True' to continue to the rest of the conversation stage
+            return True                  
         
-        # Define the Non-complying user's reply
-        non_complying_reply = f'''Sorry! I didn't understand that. Could you please answer with the options provided?'''
+        else:
+            # Define the Non-complying user's reply
+            non_complying_reply = f'''Sorry! I didn't understand that. Could you please answer with the options provided?'''
 
-        # Send the Non-complying user's reply
-        self.send_message(non_complying_reply)
+            # Send the Non-complying user's reply
+            self.send_message(non_complying_reply)
 
-        # FOR THE INTEGRATED VERSION: Send again the last message to the user to refresh the options provided                 
-        response = input(last_message)
-
-        return response.lower()
-
+            # Send the last question asked to remind the user the valid responses                 
+            self.send_message(self.conversation_input['last_message'])
+    
 
     def early_exit(self) -> None:
 
         '''
-        This function Finishes the chat with the user if it's detected that the user intents to close the chat.
+        This function finishes the chat with the user if it's detected that the user intents to close the chat.
 
             - This must include an early closing message sent to the customer and the DB closing.           
         '''
         
+        # Create the early closing message
         early_closing_message = f'''Alright! I will close this query now.
 
 Thank you for contacting out St. John's Health Group Virtual Assistance Service.✝️🧑‍⚕️
 We value your preferrence for our services! 😊​
 We hope you get better in no time ❤️‍🩹'''
         
-        return self.send_message(early_closing_message)
+        # Send the early closing message
+        self.send_message(early_closing_message)
+
+        # Close the conversation in the DB
+        'Write the DB conversation closing'
+
+        # Reset the conversation stage for future queries
+        self.conversation_stage = ''
+        
 
 
 
@@ -230,7 +237,6 @@ We hope you get better in no time ❤️‍🩹'''
     def handle_greeting(self) -> None:
 
         '''This function handles the first contact validation, capture the ID and the name of the patient and prompts the message for the next step'''
-
 
         # Check if the user response met the '*ID's Number*, *Patient's Full Name' criteria
         if self.conversation_input['user_response'].count(',') != 1:
@@ -243,13 +249,17 @@ Please reply as follows: _ID's Number_, _Patient's Full Name_''')
 
         else:
 
-            # Process the patient response to the greeting
+            # Save the patient's name and ID provided in the greeting response
             self.patient_id, self.patient_name = [' '.join(elem.strip().split()).lower().title() for elem in self.conversation_input['user_response'].split(',')]
+
 
             # Move on to the next stage
             self.conversation_stage = 'symptoms'
 
-            # Prompt the user confirming their input and leading to the next stage
+            # Log the stage change
+            logger.info(f"\nStage chaged to: {self.conversation_stage}\n")
+
+            # Define the message to confirm their input and to lead to the next stage
             new_message = f'''Alright, {self.patient_name}, thanks for reaching out. 😊​
 
 Now, Let's start checking on your symptoms.
@@ -264,10 +274,10 @@ Could you please describe your symptoms with the following options?
     4. Joint/Muscular Discomfort
     5. Other Health Issues'''
             
-            # Send the message & capture response
+            # Send the message
             self.send_message(new_message)
 
-            # Define the Last Message if is needed to be reminded to the user if in the next stage it fails the reply cheking
+            # Define the last message for if it's needed to be reminded to the user if in the next stage it fails the reply cheking
             self.conversation_input['last_message'] = f'''Could you please describe your symptoms with the following options?
 
     1. General Discomfort
@@ -281,117 +291,93 @@ Could you please describe your symptoms with the following options?
 
 
     #   2. Symptoms Handling / 'symptoms'
-    def handle_symptoms(self, user_response:str, last_message:str, replying_options:list[str]) -> tuple[str]:
+    def handle_symptoms(self) -> None:
 
         # Check the user's reply is within expected
-        while user_response not in replying_options:
+        if self.check_reply():    
+
+            # Save the Patient Discomfort
+            #   If the answer is a number
+            if self.conversation_input['user_response'] in '12345':
+
+                if self.conversation_input['user_response'] == '1':
+                    self.patient_discomfort = 'general discomfort'
+
+                elif self.conversation_input['user_response'] == '2':
+                    self.patient_discomfort = 'respiratory difficulties'
+
+                elif self.conversation_input['user_response'] == '3':
+                    self.patient_discomfort = 'gastrointestinal issues'
+                
+                elif self.conversation_input['user_response'] == '4':
+                    self.patient_discomfort = 'joint/muscular discomfort'
+                
+                elif self.conversation_input['user_response'] == '5':
+                    self.patient_discomfort = 'other health issues'
+
+            #   If the answer is not a number
+            else:        
+                self.patient_discomfort = self.conversation_input['user_response']
+
+
+            # Move on to the next stage
+            self.conversation_stage = 'previous_diagnosis'
+
+            # Log the stage change
+            logger.info(f"\nStage chaged to: {self.conversation_stage}\n")
+
+            # Define the message to lead to the next stage
+            new_message = f'''Do you have a previous diagnosis for your current {self.patient_discomfort}? (Yes/No)'''
             
-            user_response = self.check_reply(user_response, last_message, replying_options)
+            # Send the message
+            self.send_message(new_message)
 
-            # If early exit occurred
-            if not user_response:
+            # Define the last message for if it's needed to be reminded to the user if in the next stage it fails the reply cheking
+            self.conversation_input['last_message'] = new_message
 
-                # Change the stage to completed
-                self.conversation_stage = 'completed'
-
-                # Return in the same format expected to not break the chat logic
-                return None, None, None
-     
-
-        # Save the Patient Discomfort
-            # If the answer is a number
-        if user_response in '12345':
-
-            if user_response == '1':
-                self.patient_discomfort = 'general discomfort'
-
-            elif user_response == '2':
-                self.patient_discomfort = 'respiratory difficulties'
-
-            elif user_response == '3':
-                self.patient_discomfort = 'gastrointestinal issues'
-            
-            elif user_response == '4':
-                self.patient_discomfort = 'joint/muscular discomfort'
-            
-            elif user_response == '5':
-                self.patient_discomfort = 'other health issues'
-
-            # if the answer is not a number
-        else:        
-            self.patient_discomfort = user_response
-
-
-        # Move on to the next stage
-        self.conversation_stage = 'previous_diagnosis'
-
-        #   Prompt the user confirming their input and leading to the next stage
-        new_message = f'''Do you have a previous diagnosis for your current {self.patient_discomfort}? (Yes/No)'''
-        
-        # Send the message & capture response
-        user_response = self.send_message(new_message)
-
-        # Define the Last Message if is needed to be reminded to the user
-        last_message = new_message
-
-        # Define the replying options for the next stage checking
-        replying_options = ['yes', 'no']
-
-        # The las message is returned in case is needed to be re sended to clarify options for the user
-        return user_response, last_message, replying_options
+            # Define the replying options for the next stage checking
+            self.conversation_input['replying_options'] = ['yes', 'no']
 
 
     #   2.1. Pre-Existence Handling / 'previous_diagnosis'
     def previous_diagnosis(self, user_response:str, last_message:str, replying_options:list[str]) -> tuple[str]:
         
         # Check the user's reply is within expected
-        while user_response not in replying_options:
+        if self.check_reply():   
+
+            # Generating a pre-existing ailment
+            if self.conversation_input['user_response'] == 'yes':
+
+                # Calling the predetermined ailments according to each type of symptom
+                pre_existing_ailments = self.pre_existences_pool[self.patient_discomfort]
+
+                # Generate a random index to define the pre-existing ailment
+                ailment_index = randint(0, len(pre_existing_ailments)-1)  
+
+                # Save the randomly generated patient pre-existence
+                self.patient_pre_existence = pre_existing_ailments[ailment_index]
+
+
+            # Set the patient's ailment according to whether the user said about having a previous diagnosis
+            self.patient_ailment = self.patient_pre_existence if self.patient_pre_existence else self.patient_discomfort
+
+            # Move on to the next stage
+            self.conversation_stage = 'select_doctor'
+
+            # Log the stage change
+            logger.info(f"\nStage chaged to: {self.conversation_stage}\n")
             
-            user_response = self.check_reply(user_response, last_message, replying_options)
+            # Define the message to lead to the next stage
+            new_message = f'''Would you like your current treating doctor to review your {self.patient_ailment}? (Yes/No)'''
+            
+            # Send the message
+            self.send_message(new_message)
 
-            # If early exit occurred
-            if not user_response:
+            # Define the last message for if it's needed to be reminded to the user if in the next stage it fails the reply cheking
+            self.conversation_input['last_message'] = new_message
 
-                # Change the stage to completed
-                self.conversation_stage = 'completed'
-
-                # Return in the same format expected to not break the chat logic
-                return None, None, None
-
-
-        # Generating a pre-existing ailment
-        if user_response.lower() == 'yes':
-
-            # pre_existences_pool dict Class var, in 'patient_discomfort' instance var. 
-            pre_existing_ailments = self.pre_existences_pool[self.patient_discomfort]
-
-            # Generate a random index to have a pre-existing ailment
-            ailment_index = randint(0, len(pre_existing_ailments)-1)  
-
-            # Save the randomly generated patient pre-existence
-            self.patient_pre_existence = pre_existing_ailments[ailment_index]
-
-        # Set the patient's ailment
-        self.patient_ailment = self.patient_pre_existence if self.patient_pre_existence else self.patient_discomfort
-
-
-        # Move on to the next stage
-        self.conversation_stage = 'select_doctor'
-
-        # Prompt the user confirming their input and leading to the next stage
-        new_message = f'''Would you like your current treating doctor to review your {self.patient_ailment}? (Yes/No)'''
-        
-        # Send the message & capture response
-        user_response = self.send_message(new_message)
-
-        # Define the Last Message if is needed to be reminded to the user
-        last_message = new_message
-
-        # Define the replying options for the next stage checking
-        replying_options = ['yes', 'no']
-
-        # The las message is returned in case is needed to be re sended to clarify options for the user
-        return user_response, last_message, replying_options
+            # Define the replying options for the next stage checking
+            self.conversation_input['replying_options'] = ['yes', 'no']
 
 
     #   3. Treating doctor: Doctor Selecting / 'select_doctor'
