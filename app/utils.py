@@ -76,10 +76,10 @@ class MessageHandler:
     def __init__(self) -> None:
 
         self.conversation_input:dict = {
-            'user_response':None,
-            'last_message':None,
-            'replying_options':None,
-            'doctor_speciality': False  # This is used in stage self.conversation_input['doctor_speciality' to fall back to the same stage but having offered dr options to the user
+            'user_response': None,
+            'last_message': None,
+            'replying_options': None,
+            'doctor_speciality': False,  # This is used in stage self.conversation_input['doctor_speciality' to fall back to the same stage but having offered dr options to the user
         }
         self.conversation_stage:str = '' # Stages are: '' / 'greeting' / 'symptoms' / 'previous_diagnosis' / 'select_doctor' -> opt:'doctor_speciality' / 'appointment_time' / 'appointment_type' / 'completed'
         self.user_number:str = None
@@ -95,6 +95,7 @@ class MessageHandler:
         self.appointment_location:str = None
 
     
+
 
     # CHAT FUNCTIONS
     def process_message(self) -> None:
@@ -139,8 +140,10 @@ Please reply as follows: _ID's Number_, _Patient's Full Name_'''
             self.appointment_time_booking()
        
         elif self.conversation_stage == 'appointment_type':
-            self.select_appointment_type()      
-       
+            self.select_appointment_type()
+
+
+        # THERE IS STILL PENDING A STAGE THAT HANLDES 'COMPLETED' AND CLOSES THE CONVERSATION AND OPENS A NEW ONE
 
     def send_message(self, body_text:str) -> None:
 
@@ -157,7 +160,6 @@ Please reply as follows: _ID's Number_, _Patient's Full Name_'''
 
         except Exception as e:
             logger.error(f"Error sending message to {self.user_number}: {e}")
-
     
     def check_reply(self) -> str:
 
@@ -183,7 +185,6 @@ Please reply as follows: _ID's Number_, _Patient's Full Name_'''
             # Send the last question asked to remind the user the valid responses                 
             self.send_message(self.conversation_input['last_message'])
     
-
     def early_exit(self) -> None:
 
         '''
@@ -207,13 +208,11 @@ We hope you get better in no time ❤️‍🩹'''
 
         # Reset the conversation stage for future queries
         self.conversation_stage = ''
-        
 
 
 
 
     # CHAT STAGES / 'stage_name'
-
     #   1. Greeting / 'geeting'
     def handle_greeting(self) -> None:
 
@@ -270,7 +269,6 @@ Could you please describe your symptoms with the following options?
             # Define the replying options for the next stage checking
             self.conversation_input['replying_options'] = ['general discomfort', 'respiratory difficulties', 'gastrointestinal issues', 'joint/muscular discomfort', 'other health issues', '1', '2', '3', '4', '5']
 
-
     #   2. Symptoms Handling / 'symptoms'
     def handle_symptoms(self) -> None:
 
@@ -319,7 +317,6 @@ Could you please describe your symptoms with the following options?
             # Define the replying options for the next stage checking
             self.conversation_input['replying_options'] = ['yes', 'no']
 
-
     #   2.1. Pre-Existence Handling / 'previous_diagnosis'
     def previous_diagnosis(self) -> None:
         
@@ -359,7 +356,6 @@ Could you please describe your symptoms with the following options?
 
             # Define the replying options for the next stage checking
             self.conversation_input['replying_options'] = ['yes', 'no']
-
 
     #   3. Treating doctor: Doctor Selecting / 'select_doctor'
     def select_doctor(self) -> None:
@@ -438,7 +434,6 @@ Could you please describe your symptoms with the following options?
                 
                 # Send the message
                 send_message(new_message)
-
 
     #   3.1. Doctor Speciality / 'doctor_speciality'
     def doctor_speciality(self) -> None:
@@ -545,10 +540,8 @@ Which {self.dr_speciality[:-1]} would you like be attended by?'''
             # Define the replying options for the next stage checking
             self.conversation_input['replying_options'] = [day_and_time_op_1, day_and_time_op_2, '1', '2']
 
-
     #   4. Appointment Day and Time Setting / 'appointment_time'
     def appointment_time_booking(self) -> None:
-
 
         # Check the user's reply is within expected        
         if self.check_reply(): 
@@ -563,7 +556,7 @@ Which {self.dr_speciality[:-1]} would you like be attended by?'''
                     self.appointment_day_and_time = self.conversation_input['replying_options'][1]        
             
             # Confirm to the user the day and time of the appointment.
-            self.send_message(f'''Ok! the appointment with Dr. {self.treating_dr} to check on your {self.patient_ailment} is booked for next {self.appointment_day_and_time}''')
+            self.send_message(f'''Ok! the appointment with Dr. {self.treating_dr} to check on your {self.patient_ailment} is booked for next *{self.appointment_day_and_time}*''')
 
             # Move on to the next stage
             self.conversation_stage = 'appointment_type'
@@ -586,79 +579,68 @@ Which {self.dr_speciality[:-1]} would you like be attended by?'''
             # Define the replying options for the next stage checking
             self.conversation_input['replying_options'] = ['presentially', 'virtually', '1', '2']
 
-
     #   5. Appointment type setting / 'appointment_type'
-    def select_appointment_type(self, user_response:str, last_message:str, replying_options:list[str]) -> None:
+    def select_appointment_type(self) -> None:
 
+        # Check the user's reply is within expected        
+        if self.check_reply(): 
 
-        # Check the user's reply is within expected
-        while user_response not in replying_options:
-            
-            user_response = self.check_reply(user_response, last_message, replying_options)
+            # Save patient's appointment type
+            #   If the user's response is a number
+            if self.conversation_input['user_response'] in '12':
 
-            # If early exit occurred
-            if not user_response:
+                if self.conversation_input['user_response'] == '1':
+                    self.appointment_type = 'presentially'
                 
-                # Change the stage to completed
-                self.conversation_stage = 'completed'
+                else:
+                    self.appointment_type = 'virtually'
 
-                # Return in the same format expected to not break the chat logic
-                return None, None, None
+            else:   
+                self.appointment_type = self.conversation_input['user_response']
 
 
-        # Save patient's appointment type
-        if user_response in '12':
+            # Confirm to the user the type of the appointment.
+            self.send_message(f'''Ok! your appointment will be attended *{self.appointment_type}*''')
 
-            if user_response == '1':
-                self.appointment_type = 'presentially'
-            
+            # Move on to the next stage
+            self.conversation_stage = 'completed'
+
+            # Log the stage change
+            logger.info(f"\nStage chaged to: {self.conversation_stage}\n")
+
+
+            # Configure the closing message according to the appointment type selected
+            if self.appointment_type == 'presentially':
+
+                # Generte a seed to randomly choose a medical center
+                med_center_index = randint(0, len(self.med_cent_pool)-1)
+
+                # Set the appointment location
+                self.appointment_location = self.med_cent_pool[med_center_index]
+
+                # Generate the closing message
+                new_message = f'''Alright! The medical appointment for the patient *{self.patient_name}*, identified with ID #{self.patient_id} was booked with the {self.dr_speciality[:-1]} *Dr. {self.treating_dr}* at *{self.appointment_location}* next *{self.appointment_day_and_time}* to check patient's *{self.patient_ailment}*.
+
+    *Please remember to be present at reception 15 minutes prior to your appointment with your valid ID.*
+
+    Thank you for contacting St. John's Health Group Virtual Assistance Service.✝️🧑‍⚕️
+    We value your preferrence for our services! 😊​
+    We hope you get better in no time ❤️‍🩹 '''
+
             else:
-                self.appointment_type = 'virtually'
 
-        else:   
-            self.appointment_type = user_response
+                # Generate the closing message
+                new_message = f'''Alright! The medical appointment for the patient *{self.patient_name}*, identified with ID #{self.patient_id} was booked with the {self.dr_speciality[:-1]} with *Dr. {self.treating_dr}* virtually for the next *{self.appointment_day_and_time}* to check patient's *{self.patient_ailment}*.
 
-        # Prompt the user the type of the appointment.
-        self.send_message(f'''Ok! your appointment will be attended {self.appointment_type}''')
-
-
-        # Move on to the next stage
-        self.conversation_stage = 'completed'
-
-
-        # Configure the closing message according to the appointment type selected
-        if self.appointment_type == 'presentially':
-
-            # Generte a seed to randomly choose a medical center
-            med_center_index = randint(0, len(self.med_cent_pool)-1)
-
-            # Set the appointment location
-            self.appointment_location = self.med_cent_pool[med_center_index]
-
-            # Generate the closing message
-            new_message = f'''Alright! The medical appointment for the patient {self.patient_name}, identified with ID #{self.patient_id} was booked with the {self.dr_speciality[:-1]} Dr. {self.treating_dr} at {self.appointment_location} next {self.appointment_day_and_time} to check patient's {self.patient_ailment.title()}.
-
-Please remember to be present at reception 15 minutes prior to your appointment with your valid ID.
-
-Thank you for contacting St. John's Health Group Virtual Assistance Service.✝️🧑‍⚕️
-We value your preferrence for our services! 😊​
-We hope you get better in no time ❤️‍🩹 '''
-
-
-        else:
-
-            # Generate the closing message
-            new_message = f'''Alright! The medical appointment for the patient {self.patient_name}, identified with ID #{self.patient_id} was booked with the {self.dr_speciality[:-1]} with Dr. {self.treating_dr} virtually for the next {self.appointment_day_and_time} to check patient's {self.patient_ailment.title()}.
-
-Please remember be online 10 minutes prior to the appointment and also be sure to have a stable connection, access to a webcam and microphone to make sure the appointment will happen without inconvenience.
+*Please remember be online 10 minutes prior to the appointment and also be sure to have a stable connection, access to a webcam and microphone to make sure the appointment will happen without inconvenience.*
 
 Thank you for contacting out St. John's Health Group Virtual Assistance Service.✝️🧑‍⚕️
 We value your preferrence for our services! 😊​
 We hope you get better in no time ❤️‍🩹'''
 
 
-        # Confirm the summary of the query to the user
-        self.send_message(new_message)
+            # Confirm the summary of the query to the user
+            self.send_message(new_message)
 
 
 
@@ -668,98 +650,6 @@ We hope you get better in no time ❤️‍🩹'''
 
 
 
-
-
-
-
-
-'Proposal of new Utils.py definition'
-'#####################################################################################'
-# # utils.py
-
-# # Third-party imports
-# from twilio.rest import Client
-# from decouple import config
-# import logging
-
-# # Internal imports
-# from sqlalchemy.orm import Session
-# import database, models
-# import datetime
-
-# # CONSTANS
-# ACCOUNT_SID = config("TWILIO_ID")
-# AUTH_TOKEN = config("TWILIO_AUTH_TOKEN")
-# TWILIO_NUMBER = config('TWILIO_NUMBER')
-
-# # Twilio's Client Creation
-# client = Client(ACCOUNT_SID, AUTH_TOKEN)
-
-# # Set up logging
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger(__name__)
-
-# # Sending message logic through Twilio Messaging API
-# def send_message(to_number: str, body_text: str, quick_replies: list = None) -> None:
-#     try:
-#         message_data = {
-#             'from_': TWILIO_NUMBER,
-#             'body': body_text,
-#             'to': to_number,
-#         }
-        
-#         if quick_replies:
-#             message_data['persistent_action'] = [f'{reply}' for reply in quick_replies]
-
-#         message = client.messages.create(**message_data)
-#         logger.info(f"Message sent to {to_number}: {message.body}")
-
-#     except Exception as e:
-#         logger.error(f"Error sending message to {to_number}: {e}")
-
-# # Response generation logic
-# def generate_response(user_input: str) -> (str, list):
-#     if user_input.lower() in ["confirm", "cancel"]:
-#         chat_response = "Your appointment has been confirmed." if user_input.lower() == "confirm" else "Your appointment has been canceled."
-#         quick_replies = ["Confirm another appointment", "Cancel another appointment"]
-#     else:
-#         chat_response = "Appointment Reminder\nYour appointment is coming up on July 21 at 3PM"
-#         quick_replies = ["Confirm", "Cancel"]
-    
-#     return chat_response, quick_replies
-
-# # Handle incoming message and generate response
-# def handle_message(user_input: str, user_number: str, db: Session):
-#     # Check if there's an ongoing conversation
-#     ongoing_conversation = db.query(models.Conversation).filter(
-#         models.Conversation.user_id == user_number, 
-#         models.Conversation.end_time == None
-#     ).first()
-
-#     if not ongoing_conversation:
-#         # Create a new conversation
-#         conversation_id = database.create_conversation(db, user_id=user_number)
-#     else:
-#         conversation_id = ongoing_conversation.id
-
-#     # Store the received message
-#     database.add_message(db, conversation_id, sender=user_number, message=user_input)
-
-#     # Generate a response
-#     chat_response, quick_replies = generate_response(user_input)
-
-#     # Store the response message
-#     database.add_message(db, conversation_id, sender="bot", message=chat_response)
-
-#     # Send the response back via Twilio with quick replies
-#     send_message(user_number, chat_response, quick_replies)
-
-#     # If the conversation is over, update the end_time (you can define your own logic to determine this)
-#     if chat_response.lower() in ["bye", "goodbye", "see you"]:
-#         database.end_conversation(db, conversation_id)
-    
-#     return chat_response
-'#####################################################################################'
 
 
 
