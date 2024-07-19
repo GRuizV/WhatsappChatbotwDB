@@ -127,19 +127,11 @@ Please reply as follows: _ID's Number_, _Patient's Full Name_'''
              self.handle_symptoms()
 
         elif self.conversation_stage == 'previous_diagnosis':
-            user_response, last_message, replying_options = self.previous_diagnosis(user_response=self.conversation_input['user_response'], last_message=self.conversation_input['last_message'], replying_options=self.conversation_input['replying_options'])
-            self.conversation_input['user_response'] = user_response
-            self.conversation_input['last_message'] = last_message
-            self.conversation_input['replying_options'] = replying_options
-
+            self.previous_diagnosis()
 
         elif self.conversation_stage == 'select_doctor':
-            user_response, last_message, replying_options = self.select_doctor(user_response=self.conversation_input['user_response'], last_message=self.conversation_input['last_message'], replying_options=self.conversation_input['replying_options'])
-            self.conversation_input['user_response'] = user_response
-            self.conversation_input['last_message'] = last_message
-            self.conversation_input['replying_options'] = replying_options
-            
-
+            self.select_doctor()
+           
         elif self.conversation_stage == 'doctor_speciality':
             user_response, last_message, replying_options = self.doctor_speciality(user_response=self.conversation_input['user_response'], last_message=self.conversation_input['last_message'], replying_options=self.conversation_input['replying_options'])
             self.conversation_input['user_response'] = user_response
@@ -180,14 +172,11 @@ Please reply as follows: _ID's Number_, _Patient's Full Name_'''
         '''This function validates that the user's response are within expected.'''
         
         # Check for early exit
-        if self.conversation_input['user_response'].lower() == 'exit':
+        if self.conversation_input['user_response'] == 'exit':
             return self.early_exit()
 
         # Check if the user's response is within expected
-        elif self.conversation_input['user_response'].lower() in self.conversation_input['replying_options']:
-
-            # Update the user's response
-            self.conversation_input['user_response'] = self.conversation_input['user_response'].lower()
+        elif self.conversation_input['user_response'] in self.conversation_input['replying_options']:
 
             # Return 'True' to continue to the rest of the conversation stage
             return True                  
@@ -340,7 +329,7 @@ Could you please describe your symptoms with the following options?
 
 
     #   2.1. Pre-Existence Handling / 'previous_diagnosis'
-    def previous_diagnosis(self, user_response:str, last_message:str, replying_options:list[str]) -> tuple[str]:
+    def previous_diagnosis(self) -> None:
         
         # Check the user's reply is within expected
         if self.check_reply():   
@@ -381,103 +370,84 @@ Could you please describe your symptoms with the following options?
 
 
     #   3. Treating doctor: Doctor Selecting / 'select_doctor'
-    def select_doctor(self, user_response:str, last_message:str, replying_options:list[str]) -> tuple[str]:
+    def select_doctor(self) -> None:
 
-    
         # Check the user's reply is within expected
-        while user_response not in replying_options:
+        if self.check_reply():
+
+            # Generate a doctor's speciality based on patient discomfort
+            self.dr_speciality = self.drs_specialities_pool[self.patient_discomfort]
+
+            # Generating a dr's full name
+            if self.conversation_input['user_response'] == 'yes':
+
+                # Generate dr's names and last names options. 
+                dr_names_options = self.drs_names_and_last_names_pool['names']
+                dr_last_names_options = self.drs_names_and_last_names_pool['last_names']
+
+                # Generate the seeds of the resulting dr's name and last name
+                dr_names_index = randint(0, len(dr_names_options)-1)
+                dr_last_name_index = randint(0, len(dr_last_names_options)-1)
+
+                # Define the actual dr's name and last name
+                dr_full_name = f'{dr_names_options[dr_names_index]} {dr_last_names_options[dr_last_name_index]}'        
+
+                # Save dr's selection
+                self.treating_dr = dr_full_name
+
             
-            user_response = self.check_reply(user_response, last_message, replying_options)
+            # Change the stage depending on if a Doctor has already been selected
+            self.conversation_stage = 'appointment_time' if self.treating_dr else 'doctor_speciality'
 
-            # If early exit occurred
-            if not user_response:
-
-                # Change the stage to completed
-                self.conversation_stage = 'completed'
-
-                # Return in the same format expected to not break the chat logic
-                return None, None, None
+            # Log the stage change
+            logger.info(f"\nStage chaged to: {self.conversation_stage}\n")
 
 
-        # Generate a doctor's speciality based on patient discomfort
-        self.dr_speciality = self.drs_specialities_pool[self.patient_discomfort]
+            # Direct the next step depending on if the patient want to select a new doctor or they don't
+            if self.conversation_stage == 'appointment_time':
+
+                # First, confirm the the name of the current treating doctor
+                self.send_message(f'''Ok, it's confirmed that Dr. {self.treating_dr} will check your {self.patient_ailment}''')
 
 
-        # Generating a dr's full name
-        if user_response.lower() == 'yes':
+                # Next, Define the day and the time of the appointment randomly
+                #   Generate day and time options. 
+                time_options = self.time_pool
+                day_options = self.weekday_pool
 
-            # Generate dr's names and last names options. 
-            dr_names_options = self.drs_names_and_last_names_pool['names']
-            dr_last_names_options = self.drs_names_and_last_names_pool['last_names']
+                #   Generate seeds to randomly generate 2 different options for day and time for the appointment
+                time_op1, time_op2, = sample(time_options, 2)
+                day_op1, day_op2 = sample(day_options, 2)
 
-            # Generate the seeds of the resulting dr's name and last name
-            dr_names_index = randint(0, len(dr_names_options)-1)
-            dr_last_name_index = randint(0, len(dr_last_names_options)-1)
-
-            # Define the actual dr's name and last name
-            user_response = f'{dr_names_options[dr_names_index]} {dr_last_names_options[dr_last_name_index]}'        
-
-            # Save dr's selection
-            self.treating_dr = user_response
+                #   Define the actual 2 options of day/time for the user to choose
+                day_and_time_op_1 = f'{day_op1} {time_op1}'
+                day_and_time_op_2 = f'{day_op2} {time_op2}'
 
 
-        
-        # Change the stage depending on if a Doctor has already been selected
-        self.conversation_stage = 'appointment_time' if self.treating_dr else 'doctor_speciality'
+                # And finally, Define the message to lead to the next stage
+                new_message = f'''Currently Dr. {self.treating_dr} has the following time availability:
+    1. {day_and_time_op_1}
+    2. {day_and_time_op_2}
 
+    Which one would fit best for you?'''
+                
+                # Send the message
+                send_message(new_message)
 
-        # Direct the next step depending on if the patient want to select a new doctor or they don't
-        if self.conversation_stage == 'appointment_time':
+                # Define the last message for if it's needed to be reminded to the user if in the next stage it fails the reply cheking
+                self.conversation_input['last_message'] = new_message
 
+                # Define the replying options for the next stage checking
+                self.conversation_input['replying_options'] = [day_and_time_op_1, day_and_time_op_2, '1', '2']
+           
 
-            # First, confirm the the name of the current treating doctor
-            self.send_message(f'''Ok, it's confirmed that Dr. {self.treating_dr} will now be attending you''')
+            else:   
 
-
-            # Next, Define the day and the time of the appointment randomly
-            #   Generate day and time options. 
-            time_options = self.time_pool
-            day_options = self.weekday_pool
-
-            #   Generate seeds to randomly generate 2 different options for day and time for the appointment
-            time_op1, time_op2, = sample(time_options, 2)
-            day_op1, day_op2 = sample(day_options, 2)
-
-            #   Define the actual 2 options of day/time for the user to choose
-            day_and_time_op_1 = f'{day_op1} {time_op1}'
-            day_and_time_op_2 = f'{day_op2} {time_op2}'
-
-
-            # And finally, create the message for the user to confirm their input and leading to the next stage
-            new_message = f'''Currently Dr. {self.treating_dr} has the following time availability:
-1. {day_and_time_op_1}
-2. {day_and_time_op_2}
-
-Which one would fit best for you?'''
-            
-            # Send the message & capture response
-            user_response = self.send_message(new_message)
-
-            # Define the Last Message if is needed to be reminded to the user
-            last_message = new_message
-
-            # Define the replying options for the next stage checking
-            replying_options = [day_and_time_op_1, day_and_time_op_2, '1', '2']
-
-            # The las message is returned in case is needed to be re sended to clarify options for the user
-            return user_response, last_message, replying_options
-        
-
-        else:   
-
-            # Create the message leading to the next stage
-            new_message = f'''No problem, in that case we will now select a new doctor for you'''
-            
-            # Send the message
-            self.send_message(new_message)
-
-            # Return None to no break the return structure in the process_message function
-            return None, None, None
+                # Create the message leading to the next stage
+                new_message = f'''No problem, in that case we will now select a new doctor for you'''
+                
+                # Send the message
+                send_message(new_message)
 
 
     #   3.1. Doctor Speciality / 'doctor_speciality'
