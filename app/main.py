@@ -67,7 +67,7 @@ async def reply(request: Request, db: Session = Depends(database.get_db)) -> dic
         chatbot_handler.user_number = From
 
         # Process the incomming message
-        chatbot_handler.conversation_input['user_response'] = Body
+        chatbot_handler.conversation_input['user_response'] = Body.lower()
         chatbot_handler.process_message()
 
         # Return the response for logging purposes
