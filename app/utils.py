@@ -240,7 +240,7 @@ Please reply as follows: _ID's Number_, _Patient's Full Name_''')
             logger.info(f"\nStage chaged to: {self.conversation_stage}\n")
 
             # Define the message to confirm their input and to lead to the next stage
-            new_message = f'''Alright, {self.patient_name}, thanks for reaching out. 😊​
+            new_message = f'''Alright, {self.patient_name.split()[0]}, thanks for reaching out. 😊​
 
 Now, Let's start checking on your symptoms.
                             
@@ -306,7 +306,7 @@ Could you please describe your symptoms with the following options?
             logger.info(f"\nStage chaged to: {self.conversation_stage}\n")
 
             # Define the message to lead to the next stage
-            new_message = f'''Do you have a previous diagnosis for your current {self.patient_discomfort}? (Yes/No)'''
+            new_message = f'''Do you have a previous diagnosis for your current {self.patient_discomfort.title()}? (Yes/No)'''
             
             # Send the message
             self.send_message(new_message)
@@ -412,10 +412,11 @@ Could you please describe your symptoms with the following options?
 
                 # And finally, Define the message to lead to the next stage
                 new_message = f'''Currently Dr. {self.treating_dr} has the following time availability:
-    1. {day_and_time_op_1}
-    2. {day_and_time_op_2}
 
-    Which one would fit best for you?'''
+1. {day_and_time_op_1}
+2. {day_and_time_op_2}
+
+Which one would fit best for you?'''
                 
                 # Send the message
                 self.send_message(new_message)
@@ -433,7 +434,9 @@ Could you please describe your symptoms with the following options?
                 new_message = f'''No problem, in that case we will now select a new doctor for you'''
                 
                 # Send the message
-                send_message(new_message)
+                self.send_message(new_message)
+
+                '***HERE ARE TROUBLES***'
 
     #   3.1. Doctor Speciality / 'doctor_speciality'
     def doctor_speciality(self) -> None:
@@ -526,10 +529,11 @@ Which {self.dr_speciality[:-1]} would you like be attended by?'''
 
             # And finally, create the message for the user to confirm their input and leading to the next stage
             new_message = f'''Currently Dr. {self.treating_dr} has the following time availability:
-    1. {day_and_time_op_1}
-    2. {day_and_time_op_2}
+    
+1. {day_and_time_op_1}
+2. {day_and_time_op_2}
 
-    Which one would fit best for you?'''
+Which one would fit best for you?'''
             
             # Send the message
             self.send_message(new_message)
@@ -567,8 +571,8 @@ Which {self.dr_speciality[:-1]} would you like be attended by?'''
             # Create the message for the user to confirm their input and leading to the next stage
             new_message = f'''Would you rather having your medical appointment with Dr. {self.treating_dr} presentially or virtually?
 
-    1. Presentially
-    2. Virtually'''
+1. Presentially
+2. Virtually'''
             
             # Send the message
             self.send_message(new_message)
@@ -621,11 +625,11 @@ Which {self.dr_speciality[:-1]} would you like be attended by?'''
                 # Generate the closing message
                 new_message = f'''Alright! The medical appointment for the patient *{self.patient_name}*, identified with ID #{self.patient_id} was booked with the {self.dr_speciality[:-1]} *Dr. {self.treating_dr}* at *{self.appointment_location}* next *{self.appointment_day_and_time}* to check patient's *{self.patient_ailment}*.
 
-    *Please remember to be present at reception 15 minutes prior to your appointment with your valid ID.*
+*Please remember to be present at reception 15 minutes prior to your appointment with your valid ID.*
 
-    Thank you for contacting St. John's Health Group Virtual Assistance Service.✝️🧑‍⚕️
-    We value your preferrence for our services! 😊​
-    We hope you get better in no time ❤️‍🩹 '''
+Thank you for contacting St. John's Health Group Virtual Assistance Service.✝️🧑‍⚕️
+We value your preferrence for our services! 😊​
+We hope you get better in no time ❤️‍🩹 '''
 
             else:
 
