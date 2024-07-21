@@ -3,7 +3,11 @@ from sqlalchemy.orm import Session
 
 # Internal imports
 import utils, models, database
+import logging
 
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Initialize the server app
 app = FastAPI()
@@ -23,6 +27,8 @@ async def reply(request: Request, db: Session = Depends(database.get_db)) -> dic
         form_data = await request.form()
         Body = form_data.get('Body')
         From = form_data.get('From')
+
+        logger.info(f"\n\nMessage received: {Body}\n") # Log the message received  
 
         # Message guard
         if not Body:
@@ -67,7 +73,7 @@ async def reply(request: Request, db: Session = Depends(database.get_db)) -> dic
         chatbot_handler.user_number = From
 
         # Process the incomming message
-        chatbot_handler.conversation_input['user_response'] = Body.lower()
+        chatbot_handler.conversation_input['user_response'] = Body.lower()        
         chatbot_handler.process_message()
 
         # Return the response for logging purposes

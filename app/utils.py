@@ -138,10 +138,10 @@ Please reply as follows: _ID's Number_, _Patient's Full Name_'''
                 to=self.user_number
                 )
             
-            logger.info(f"Message sent to {self.user_number}: {message.body}")
+            logger.info(f"\n\nMessage sent to {self.user_number}: {message.body}\n")
 
         except Exception as e:
-            logger.error(f"Error sending message to {self.user_number}: {e}")
+            logger.error(f"\n\nError sending message to {self.user_number}: {e}\n")
     
     def check_reply(self) -> str:
 
@@ -213,7 +213,6 @@ Please reply as follows: _ID's Number_, _Patient's Full Name_''')
 
             # Save the patient's name and ID provided in the greeting response
             self.patient_id, self.patient_name = [' '.join(elem.strip().split()).lower().title() for elem in self.conversation_input['user_response'].split(',')]
-
 
             # Move on to the next stage
             self.conversation_stage = 'symptoms'
