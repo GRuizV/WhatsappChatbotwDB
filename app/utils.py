@@ -22,22 +22,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-# Sending message logic through Twilio Messaging API
-def send_message(to_number:str, body_text:str) -> None:
-
-    try:
-        message = client.messages.create(
-            from_=TWILIO_NUMBER,
-            body=body_text,
-            to=to_number
-            )
-        
-        logger.info(f"Message sent to {to_number}: {message.body}")
-
-    except Exception as e:
-        logger.error(f"Error sending message to {to_number}: {e}")
-
-
 
 # CHATBOT LOGIC
 # This class will be who manage the patient's info storing, generating appointment variables and functions related with the chat
@@ -78,8 +62,7 @@ class MessageHandler:
         self.conversation_input:dict = {
             'user_response': None,
             'last_message': None,
-            'replying_options': None,
-            'doctor_speciality': False,  # This is used in stage self.conversation_input['doctor_speciality' to fall back to the same stage but having offered dr options to the user
+            'replying_options': None
         }
         self.conversation_stage:str = '' # Stages are: '' / 'greeting' / 'symptoms' / 'previous_diagnosis' / 'select_doctor' -> opt:'doctor_speciality' / 'appointment_time' / 'appointment_type' / 'completed'
         self.user_number:str = None
@@ -142,8 +125,7 @@ Please reply as follows: _ID's Number_, _Patient's Full Name_'''
         elif self.conversation_stage == 'appointment_type':
             self.select_appointment_type()
 
-
-        # THERE IS STILL PENDING A STAGE THAT HANLDES 'COMPLETED' AND CLOSES THE CONVERSATION AND OPENS A NEW ONE
+        '''THERE IS STILL PENDING A STAGE THAT HANLDES 'COMPLETED' AND CLOSES THE CONVERSATION AND OPENS A NEW ONE'''
 
     def send_message(self, body_text:str) -> None:
 
@@ -426,65 +408,51 @@ Which one would fit best for you?'''
 
                 # Define the replying options for the next stage checking
                 self.conversation_input['replying_options'] = [day_and_time_op_1, day_and_time_op_2, '1', '2']
-           
 
-            else:   
+            else:
 
-                # Create the message leading to the next stage
+                # Create a message confirming that a new doctor will be selected
                 new_message = f'''No problem, in that case we will now select a new doctor for you'''
-                
+                    
                 # Send the message
                 self.send_message(new_message)
 
-                '***HERE ARE TROUBLES***'
+                # Generate dr's names and last names options. 
+                dr_names_options = self.drs_names_and_last_names_pool['names']
+                dr_last_names_options = self.drs_names_and_last_names_pool['last_names']
+
+                # Generate seeds to randomly generate 3 different options for drs names and last names
+                name_op1, name_op2, name_op3 = sample(dr_names_options,3)
+                lastname_op1, lastname_op2, lastname_op3 = sample(dr_last_names_options,3)
+
+                # Define the actual 3 options of drs for the user to choose
+                dr_op_1 = f'{name_op1} {lastname_op1}'
+                dr_op_2 = f'{name_op2} {lastname_op2}'
+                dr_op_3 = f'{name_op3} {lastname_op3}'
+
+                # Generate the text body that will be sent to the user
+                #   the 'dr_speciality[:-1]' is to name the singular of the dr specialities
+                new_message = f'''We currently count with this {self.dr_speciality} that can check on your {self.patient_ailment}:
+
+    1. {dr_op_1}
+    2. {dr_op_2}
+    3. {dr_op_3}
+
+    Which {self.dr_speciality[:-1]} would you like be attended by?'''
+            
+                # Send the message
+                self.send_message(new_message)
+
+                # Define the last message for if it's needed to be reminded to the user if in the next stage it fails the reply cheking
+                self.conversation_input['last_message'] = new_message
+
+                # Define the replying options for the next stage checking
+                self.conversation_input['replying_options'] = [dr_op_1.lower(), dr_op_2.lower(), dr_op_3.lower(), '1', '2', '3']
 
     #   3.1. Doctor Speciality / 'doctor_speciality'
     def doctor_speciality(self) -> None:
         
-        '''This function will guide the user to select a new treating doctor during the conversation
-
-            - The 'self.conversation_input['doctor_speciality']' parameter is changed to check if the conversation already offered a doctor option and 
-                the usear already picked one.
-        '''
-        
-        # If the conversation hasn't passed over this part
-        if not self.conversation_input['doctor_speciality']:
-            
-            # Generate dr's names and last names options. 
-            dr_names_options = self.drs_names_and_last_names_pool['names']
-            dr_last_names_options = self.drs_names_and_last_names_pool['last_names']
-
-            # Generate seeds to randomly generate 3 different options for drs names and last names
-            name_op1, name_op2, name_op3 = sample(dr_names_options,3)
-            lastname_op1, lastname_op2, lastname_op3 = sample(dr_last_names_options,3)
-
-            # Define the actual 3 options of drs for the user to choose
-            dr_op_1 = f'{name_op1} {lastname_op1}'
-            dr_op_2 = f'{name_op2} {lastname_op2}'
-            dr_op_3 = f'{name_op3} {lastname_op3}'
-
-            # Generate the text body that will be sent to the user
-            #   the 'dr_speciality[:-1]' is to name the singular of the dr specialities
-            new_message = f'''We currently count with this {self.dr_speciality} that can check on your {self.patient_ailment}:
-
-1. {dr_op_1}
-2. {dr_op_2}
-3. {dr_op_3}
-
-Which {self.dr_speciality[:-1]} would you like be attended by?'''
-        
-            # Send the message
-            self.send_message(new_message)
-
-            # Define the last message for if it's needed to be reminded to the user if in the next stage it fails the reply cheking
-            self.conversation_input['last_message'] = new_message
-
-            # Define the replying options for the next stage checking
-            self.conversation_input['replying_options'] = [dr_op_1.lower(), dr_op_2.lower(), dr_op_3.lower(), '1', '2', '3']
-
-            # Change the 'doctor_speciality' parameter in the conversation_input instance variable to True
-            self.conversation_input['doctor_speciality'] = True
-
+        '''This function will guide the user to select a new treating doctor during the conversation'''
 
         # if the conversation already offered doctors options, check the user's reply is within expected
         if self.check_reply():            
