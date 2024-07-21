@@ -59,12 +59,12 @@ class MessageHandler:
     # INSTANCE DEFINITION - Instance variables
     def __init__(self) -> None:
 
+        self.conversation_stage:str = '' # Stages are: '' / 'greeting' / 'symptoms' / 'previous_diagnosis' / 'select_doctor' -> opt:'doctor_speciality' / 'appointment_time' / 'appointment_type' / 'completed'
         self.conversation_input:dict = {
             'user_response': None,
             'last_message': None,
             'replying_options': None
-        }
-        self.conversation_stage:str = '' # Stages are: '' / 'greeting' / 'symptoms' / 'previous_diagnosis' / 'select_doctor' -> opt:'doctor_speciality' / 'appointment_time' / 'appointment_type' / 'completed'
+        }        
         self.user_number:str = None
         self.patient_id:str = None
         self.patient_name:str = None
@@ -77,6 +77,28 @@ class MessageHandler:
         self.appointment_type:str = None
         self.appointment_location:str = None
 
+
+    def reset_state(self):
+
+        '''This function resets the conversation state for a new query'''
+
+        self.conversation_stage = ''
+        self.conversation_input = {
+            'user_response': None,
+            'last_message': None,
+            'replying_options': None
+        }
+        self.user_number = None
+        self.patient_id = None
+        self.patient_name = None
+        self.patient_discomfort = None
+        self.patient_pre_existence = None
+        self.patient_ailment = None
+        self.treating_dr = None
+        self.dr_speciality = None
+        self.appointment_day_and_time = None
+        self.appointment_type = None
+        self.appointment_location = None
     
 
 
@@ -125,8 +147,10 @@ Please reply as follows: _ID's Number_, _Patient's Full Name_'''
         elif self.conversation_stage == 'appointment_type':
             self.select_appointment_type()
 
-        '''THERE IS STILL PENDING A STAGE THAT HANLDES 'COMPLETED' AND CLOSES THE CONVERSATION AND OPENS A NEW ONE'''
-
+        elif self.conversation_stage == 'completed':
+            self.send_message(f'''_Your query has been completed, if you would like to start a new one, please type anything start a new conversation_''')
+            self.reset_state()
+    
     def send_message(self, body_text:str) -> None:
 
         '''This function send a message to the user through Twilio's API'''
@@ -189,7 +213,7 @@ We hope you get better in no time ❤️‍🩹'''
         'Write the DB conversation closing'
 
         # Reset the conversation stage for future queries
-        self.conversation_stage = ''
+        self.reset_state()
 
 
 
