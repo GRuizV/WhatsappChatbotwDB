@@ -1,5 +1,6 @@
 # Third-party imports
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
+from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker, Session
 from decouple import config
 from typing import Generator, Optional
@@ -16,12 +17,19 @@ DB_PWD = config('DB_PASSWORD')
 DB_NAME = config('DB_NAME')
 
 #DATABASE CREATION
-DB_URL = f"postgresql://{DB_USER}:{DB_PWD}@localhost/{DB_NAME}"
+DB_URL = f"postgresql://{DB_USER}:{DB_PWD}@localhost/{DB_NAME}?client_encoding=utf8"
 engine = create_engine(DB_URL)
+
+@event.listens_for(Engine, "connect")
+def set_client_encoding(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("SET CLIENT_ENCODING TO 'UTF8';")
+    cursor.close()
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-#DB Operations Definition
+# DB Operations Definition
 
 # Create a new conversation
 def create_conversation(db:Session, user_id: Optional[str] = None) -> int:
@@ -42,7 +50,7 @@ def add_message(db:Session, conversation_id: int, sender: str, message: str) -> 
     db.commit()
     
 
-# Add a message to a conversation
+# Close a conversation
 def end_conversation(db:Session, conversation_id: int) -> None:
 
     conversation = db.query(Conversation).filter_by(id=conversation_id).first()
@@ -56,8 +64,10 @@ def end_conversation(db:Session, conversation_id: int) -> None:
 def get_db() -> Generator[Session, None, None]:
 
     db = SessionLocal()
+
     try:
         yield db
+
     finally:
         db.close()
 
