@@ -28,7 +28,8 @@ async def reply(request: Request, db: Session = Depends(database.get_db)) -> dic
         Body = form_data.get('Body')
         From = form_data.get('From')
 
-        logger.info(f"\n\nMessage received: {Body}\n") # Log the message received  
+        # Log the message received  
+        logger.info(f"\n\nMessage received: {Body}\n") 
 
         # Message guard
         if not Body:
@@ -37,47 +38,44 @@ async def reply(request: Request, db: Session = Depends(database.get_db)) -> dic
         if not From:
             raise HTTPException(status_code=400, detail="No sender number found")
 
-        'DB Functionalities: For later on'
-        # def db_functions():
+                
+        # Check if there's an ongoing conversation for DB storing
+        ongoing_conversation = db.query(models.Conversation).filter(
+            models.Conversation.user_id == From, 
+            models.Conversation.end_time == None
+        ).first()
 
-        #     # Check if there's an ongoing conversation
-        #     ongoing_conversation = db.query(models.Conversation).filter(
-        #         models.Conversation.user_id == From, 
-        #         models.Conversation.end_time == None
-        #     ).first()
+        # If the 'ongoing_conversation' variable does not exist it means there are no open conversation 
+        if not ongoing_conversation:
 
-        #     if not ongoing_conversation:
-        #         # Create a new conversation
-        #         conversation_id = database.create_conversation(db, user_id=From)
-        #     else:
-        #         conversation_id = ongoing_conversation.id
+            # Create a new conversation
+            conversation_id = database.create_conversation(db, user_id=From)
 
-        #     # Store the received message
-        #     database.add_message(db, conversation_id, sender=From, message=Body)
+            # Log that a new conversation is added to the DB 
+            logger.info(f"\n\nNew conversation added to the DB with a new conversation ID: {conversation_id}\n") 
+            
 
-        #     # Generate a response (this is where your chatbot logic will go)
-        #     chat_response = utils.generate_response(Body)  # You will define this function
+        else:
+            conversation_id = ongoing_conversation.id
 
-        #     # Store the response message
-        #     database.add_message(db, conversation_id, sender="bot", message=chat_response)
+        # Store the received message
+        database.add_message(db, conversation_id, sender=From, message=Body)
 
-        #     # Send the response back via Twilio
-        #     utils.send_message(From, chat_response)
+        # Log that the message receive was added to the message table with a conversation id 
+        logger.info(f"\n\nReceived message added to the conversation #{conversation_id}\n")
+        
 
-        #     # If the conversation is over, update the end_time (you can define your own logic to determine this)
-        #     # For example, if the chat_response is a closing statement, you can end the conversation
-        #     if Body.lower() in ["bye", "goodbye", "see you"]:
-        #         database.end_conversation(db, conversation_id)
-
-        # Set the user number in the chatbot handler
+        # Set the conversations variables for the chatbot handler
         chatbot_handler.user_number = From
+        chatbot_handler.conversation_id = conversation_id
+        chatbot_handler.database = db
 
         # Process the incomming message
         chatbot_handler.conversation_input['user_response'] = Body.lower()        
         chatbot_handler.process_message()
 
         # Return the response for logging purposes
-        return {"message": chatbot_handler.conversation_stage}
+        return {"Conversation Stage": chatbot_handler.conversation_stage, "Message Received": Body}
 
 
     except Exception as e:

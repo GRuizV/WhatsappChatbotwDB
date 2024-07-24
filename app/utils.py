@@ -1,10 +1,12 @@
 # Third-party imports
 from twilio.rest import Client
 from decouple import config
+from sqlalchemy.orm import Session
 
 # Internal imports
 import logging
 from random import randint, sample
+import database
 
 
 # CONSTANS
@@ -58,7 +60,9 @@ class MessageHandler:
 
     # INSTANCE DEFINITION - Instance variables
     def __init__(self) -> None:
-
+        
+        self.conversation_id:int = None
+        self.database:Session = None
         self.conversation_stage:str = '' # Stages are: '' / 'greeting' / 'symptoms' / 'previous_diagnosis' / 'select_doctor' -> opt:'doctor_speciality' / 'appointment_time' / 'appointment_type' / 'completed'
         self.conversation_input:dict = {
             'user_response': None,
@@ -99,7 +103,6 @@ class MessageHandler:
         self.appointment_day_and_time = None
         self.appointment_type = None
         self.appointment_location = None
-    
 
 
     # CHAT FUNCTIONS
@@ -156,15 +159,26 @@ Please reply as follows: _ID's Number_, _Patient's Full Name_'''
         '''This function send a message to the user through Twilio's API'''
 
         try:
+
+            # Send the message
             message = client.messages.create(
                 from_=TWILIO_NUMBER,
                 body=body_text,
                 to=self.user_number
                 )
             
+            # Store the message in the database, table: messages
+            database.add_message(db=self.database, conversation_id=self.conversation_id, sender="bot", message=body_text)
+
+            # Log if the message sending was succesful
             logger.info(f"\n\nMessage sent to {self.user_number}: {message.body}\n")
+            
+            # Log that the message sent was added to the message table with a conversation id 
+            logger.info(f"\n\nSent message added to the conversation #{self.conversation_id}\n") 
 
         except Exception as e:
+
+            # Log if the message sending was unsuccesful
             logger.error(f"\n\nError sending message to {self.user_number}: {e}\n")
     
     def check_reply(self) -> str:
@@ -209,8 +223,11 @@ We hope you get better in no time ❤️‍🩹'''
         # Send the early closing message
         self.send_message(early_closing_message)
 
-        # Close the conversation in the DB
-        'Write the DB conversation closing'
+        # Finalize the conversation in the database
+        database.end_conversation(db=self.database, conversation_id=self.conversation_id)
+
+        # Log that the conversation was ended 
+        logger.info(f"\n\nThe conversation #{self.conversation_id} finalized in the DB\n")
 
         # Reset the conversation stage for future queries
         self.reset_state()
@@ -636,6 +653,12 @@ We hope you get better in no time ❤️‍🩹'''
 
             # Confirm the summary of the query to the user
             self.send_message(new_message)
+
+            # Finalize the conversation in the database
+            database.end_conversation(db=self.database, conversation_id=self.conversation_id)
+
+            # Log that the conversation was ended 
+            logger.info(f"\n\nThe conversation #{self.conversation_id} finalized in the DB\n")
 
 
 
