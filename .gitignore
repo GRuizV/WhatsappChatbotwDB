@@ -7,3 +7,6 @@ whatsapp_chatbot2024/
 # Ignore bytecode and other unnecessary files
 __pycache__/
 *.pyc
+
+# Ignore the consulting and tutoring
+ChatGPT Tutoring - Conversation Log.txt
