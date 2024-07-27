@@ -1,3 +1,4 @@
+# Third-party imports
 from fastapi import FastAPI, Request, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -79,5 +80,6 @@ async def reply(request: Request, db: Session = Depends(database.get_db)) -> dic
 
 
     except Exception as e:
-        utils.logger.error(f"Error processing request: {e}")
+        
+        logger.error(f"Error processing request: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")

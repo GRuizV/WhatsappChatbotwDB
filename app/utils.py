@@ -1,7 +1,7 @@
 # Third-party imports
 from twilio.rest import Client
 from decouple import config
-from sqlalchemy.orm import Session
+
 
 # Internal imports
 import logging
@@ -62,7 +62,7 @@ class MessageHandler:
     def __init__(self) -> None:
         
         self.conversation_id:int = None
-        self.database:Session = None
+        self.database = None
         self.conversation_stage:str = '' # Stages are: '' / 'greeting' / 'symptoms' / 'previous_diagnosis' / 'select_doctor' -> opt:'doctor_speciality' / 'appointment_time' / 'appointment_type' / 'completed'
         self.conversation_input:dict = {
             'user_response': None,
