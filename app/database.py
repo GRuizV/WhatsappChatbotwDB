@@ -59,7 +59,7 @@ def end_conversation(db:Session, conversation_id: int) -> None:
     db.commit()
 
 
-# Dependency to get the database session
+# Database instange generator, later will be the dependency in the endpoint definition
 def get_db() -> Generator[Session, None, None]:
 
     db = SessionLocal()
